@@ -111,8 +111,8 @@ class MarkerEngine(DocumentEngine):
     @property
     def capabilities(self) -> EngineCapabilities:
         return EngineCapabilities(
-            bounding_boxes=True, images=True, table_structure=True,
-            heading_detection=True,
+            bounding_boxes=True, confidence=True, images=True,
+            table_structure=True, heading_detection=True,
         )
 
     def is_available(self) -> bool:
@@ -151,12 +151,16 @@ class MarkerEngine(DocumentEngine):
 
         elapsed_ms = int((time.perf_counter() - start) * 1000)
 
+        # Marker returns parse_quality_score (0-1) when available
+        quality_score = meta.get("marker_json", {}).get("parse_quality_score")
+
         return EngineResult(
             content=content,
             format=output_format,
             engine_name=self.name,
             images=images,
             bounding_boxes=bboxes,
+            confidence=quality_score,
             pages=meta.get("page_count"),
             processing_time_ms=elapsed_ms,
             metadata=meta,

@@ -48,8 +48,7 @@ class DoclingServeEngine(DocumentEngine):
         timeout: int = 300,
     ) -> None:
         self._base_url = (
-            base_url
-            or os.getenv("DOCLING_SERVE_URL", "")
+            base_url or os.getenv("DOCLING_SERVE_URL") or ""
         ).rstrip("/")
         self._api_key = api_key or os.getenv("DOCLING_SERVE_API_KEY", "")
         self._do_ocr = do_ocr

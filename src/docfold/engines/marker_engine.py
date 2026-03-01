@@ -145,7 +145,7 @@ class MarkerEngine(DocumentEngine):
         start = time.perf_counter()
 
         loop = asyncio.get_running_loop()
-        content, images, meta = await loop.run_in_executor(
+        content, images, meta, bboxes = await loop.run_in_executor(
             None, self._call_marker, file_path, output_format, merged
         )
 
@@ -156,6 +156,7 @@ class MarkerEngine(DocumentEngine):
             format=output_format,
             engine_name=self.name,
             images=images,
+            bounding_boxes=bboxes,
             pages=meta.get("page_count"),
             processing_time_ms=elapsed_ms,
             metadata=meta,
@@ -166,7 +167,7 @@ class MarkerEngine(DocumentEngine):
         file_path: str,
         output_format: OutputFormat,
         params: dict[str, Any],
-    ) -> tuple[str, dict | None, dict]:
+    ) -> tuple[str, dict | None, dict, list[dict[str, Any]] | None]:
         import requests
 
         fmt_map = {
@@ -208,12 +209,29 @@ class MarkerEngine(DocumentEngine):
             if result.get("status") == "complete":
                 content = result.get(marker_fmt, "")
                 images = result.get("images")
+
+                # Extract bounding boxes from Marker's structured response
+                bboxes: list[dict[str, Any]] = []
+                for page in result.get("pages") or []:
+                    page_num = page.get("page_number") or page.get("number") or 0
+                    for idx, block in enumerate(page.get("blocks") or []):
+                        bbox_raw = block.get("bbox") or block.get("bounding_box")
+                        if bbox_raw:
+                            bboxes.append({
+                                "type": block.get("type", "text"),
+                                "bbox": bbox_raw,
+                                "page": page_num,
+                                "text": block.get("text", ""),
+                                "id": block.get("id") or f"p{page_num}-b{idx}",
+                            })
+
                 meta = {
                     "page_count": result.get("page_count"),
                     "marker_output_format": marker_fmt,
                     "params": params,
+                    "marker_json": result,
                 }
-                return content, images, meta
+                return content, images, meta, bboxes or None
 
             if result.get("status") == "failed":
                 raise RuntimeError(f"Marker API failed: {result.get('error')}")

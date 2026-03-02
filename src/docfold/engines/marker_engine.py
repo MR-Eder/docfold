@@ -174,13 +174,16 @@ class MarkerEngine(DocumentEngine):
     ) -> tuple[str, dict | None, dict, list[dict[str, Any]] | None]:
         import requests
 
+        # Always request JSON from Marker to get bounding boxes.
+        # JSON response includes bbox, polygon, block_type, and html per block.
+        # We reconstruct the requested format from the JSON tree.
         fmt_map = {
             OutputFormat.MARKDOWN: "markdown",
             OutputFormat.HTML: "html",
             OutputFormat.JSON: "json",
-            OutputFormat.TEXT: "markdown",  # Marker doesn't have plain text; use markdown
+            OutputFormat.TEXT: "markdown",
         }
-        marker_fmt = fmt_map[output_format]
+        requested_fmt = fmt_map[output_format]
 
         headers = {"X-Api-Key": self._api_key}
 
@@ -189,7 +192,7 @@ class MarkerEngine(DocumentEngine):
             mime_type = mimetypes.guess_type(file_path)[0] or "application/octet-stream"
             form_data: dict[str, Any] = {
                 "file": (Path(file_path).name, f, mime_type),
-                "output_format": (None, marker_fmt),
+                "output_format": (None, "json"),
             }
             # Add all Marker params to the form data
             for key, value in params.items():
@@ -211,18 +214,22 @@ class MarkerEngine(DocumentEngine):
             result = resp.json()
 
             if result.get("status") == "complete":
-                content = result.get(marker_fmt, "")
                 images = result.get("images")
-
-                # Extract bounding boxes from Marker's structured JSON tree.
-                # The `json` field is always present regardless of output_format.
-                # Structure: json -> children[Page] -> children[Table|Text|Picture|...]
-                # Each node has: bbox [x0,y0,x1,y1], block_type, id, polygon, html
-                bboxes: list[dict[str, Any]] = []
                 json_tree = result.get("json") or {}
-                for page_idx, page_node in enumerate(json_tree.get("children") or []):
+
+                # Extract bounding boxes and content from JSON tree.
+                # Structure: json -> children[Page] -> children[Block...]
+                # Each block has: bbox, block_type, id, polygon, html
+                bboxes: list[dict[str, Any]] = []
+                html_parts: list[str] = []
+                md_parts: list[str] = []
+                for page_idx, page_node in enumerate(
+                    json_tree.get("children") or [],
+                ):
                     page_num = page_idx + 1
-                    for idx, block in enumerate(page_node.get("children") or []):
+                    for idx, block in enumerate(
+                        page_node.get("children") or [],
+                    ):
                         bbox_raw = block.get("bbox")
                         if bbox_raw:
                             bboxes.append({
@@ -233,10 +240,26 @@ class MarkerEngine(DocumentEngine):
                                 "id": block.get("id") or f"p{page_num}-b{idx}",
                                 "polygon": block.get("polygon"),
                             })
+                        block_html = block.get("html", "")
+                        if block_html:
+                            html_parts.append(block_html)
+                        block_md = block.get("content", "")
+                        if block_md:
+                            md_parts.append(block_md)
+
+                # Reconstruct content in the requested format
+                if requested_fmt == "json":
+                    import json as _json
+                    content = _json.dumps(json_tree, ensure_ascii=False)
+                elif requested_fmt == "html":
+                    content = "\n".join(html_parts)
+                else:
+                    # markdown / text
+                    content = "\n\n".join(md_parts) if md_parts else "\n".join(html_parts)
 
                 meta = {
                     "page_count": result.get("page_count"),
-                    "marker_output_format": marker_fmt,
+                    "marker_output_format": requested_fmt,
                     "params": params,
                     "marker_json": result,
                 }

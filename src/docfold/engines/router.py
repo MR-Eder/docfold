@@ -31,11 +31,12 @@ _EXTENSION_PRIORITY: dict[str, list[str]] = {
     # --- PDF ---
     "pdf": [
         "docling", "mineru", "unstructured", "marker",
-        "llamaparse", "mistral_ocr", "google_docai", "azure_docint", "textract",
-        "zerox", "nougat", "surya", "pymupdf", "paddleocr", "tesseract", "easyocr",
+        "llamaparse", "mistral_ocr", "firecrawl", "google_docai", "azure_docint",
+        "textract", "zerox", "nougat", "surya", "pymupdf", "paddleocr", "tesseract",
+        "easyocr",
     ],
     # --- Office ---
-    "docx": ["docling", "marker", "unstructured", "llamaparse", "azure_docint"],
+    "docx": ["docling", "marker", "unstructured", "llamaparse", "firecrawl", "azure_docint"],
     "doc":  ["docling", "marker", "unstructured", "llamaparse", "azure_docint"],
     "pptx": ["docling", "marker", "unstructured", "llamaparse", "azure_docint"],
     "ppt":  ["docling", "marker", "unstructured", "llamaparse", "azure_docint"],
@@ -45,9 +46,9 @@ _EXTENSION_PRIORITY: dict[str, list[str]] = {
     "odp":  ["marker", "unstructured"],
     "ods":  ["marker", "unstructured"],
     # --- Web / markup ---
-    "html": ["docling", "unstructured", "marker", "azure_docint"],
-    "htm":  ["docling", "unstructured", "marker", "azure_docint"],
-    "xml":  ["unstructured"],
+    "html": ["docling", "firecrawl", "unstructured", "marker", "azure_docint"],
+    "htm":  ["docling", "firecrawl", "unstructured", "marker", "azure_docint"],
+    "xml":  ["firecrawl", "unstructured"],
     "md":   ["unstructured"],
     "rst":  ["unstructured"],
     "csv":  ["unstructured"],

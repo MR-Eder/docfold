@@ -771,6 +771,179 @@ class TestDoclingServeEngine:
             os.unlink(tmp_path)
 
 
+class TestFirecrawlEngine:
+    def test_name(self):
+        from docfold.engines.firecrawl_engine import FirecrawlEngine
+        e = FirecrawlEngine()
+        assert e.name == "firecrawl"
+
+    def test_supported_extensions(self):
+        from docfold.engines.firecrawl_engine import FirecrawlEngine
+        e = FirecrawlEngine()
+        exts = e.supported_extensions
+        assert "pdf" in exts
+        assert "html" in exts
+        assert "htm" in exts
+        assert "xml" in exts
+        assert "docx" in exts
+        assert "png" in exts
+        assert "jpg" in exts
+
+    def test_is_available_without_key(self):
+        from docfold.engines.firecrawl_engine import FirecrawlEngine
+        with patch.dict("os.environ", {}, clear=True):
+            e = FirecrawlEngine(api_key=None)
+            assert e.is_available() is False
+
+    def test_is_available_with_key(self):
+        from docfold.engines.firecrawl_engine import FirecrawlEngine
+        e = FirecrawlEngine(api_key="fc-test-key")
+        assert e.is_available() is True
+
+    def test_config_stored(self):
+        from docfold.engines.firecrawl_engine import FirecrawlEngine
+        e = FirecrawlEngine(
+            api_key="fc-key",
+            api_url="https://custom.firecrawl.dev",
+            timeout=60,
+        )
+        assert e._api_key == "fc-key"
+        assert e._api_url == "https://custom.firecrawl.dev"
+        assert e._timeout == 60
+
+    def test_capabilities(self):
+        from docfold.engines.firecrawl_engine import FirecrawlEngine
+        caps = FirecrawlEngine().capabilities
+        assert isinstance(caps, EngineCapabilities)
+        assert caps.table_structure is True
+        assert caps.heading_detection is True
+        assert caps.bounding_boxes is False
+        assert caps.confidence is False
+        assert caps.images is False
+
+    @pytest.mark.asyncio
+    async def test_process_pdf(self):
+        """Firecrawl should handle PDF files via urllib POST."""
+        import io
+        import json
+        from unittest.mock import MagicMock
+
+        from docfold.engines.base import OutputFormat
+        from docfold.engines.firecrawl_engine import FirecrawlEngine
+
+        api_response = json.dumps({
+            "success": True,
+            "data": {
+                "markdown": "# Invoice\n\nTotal: $100",
+                "metadata": {"title": "Invoice"},
+            },
+        }).encode()
+
+        mock_resp = MagicMock()
+        mock_resp.read.return_value = api_response
+        mock_resp.__enter__ = MagicMock(return_value=mock_resp)
+        mock_resp.__exit__ = MagicMock(return_value=False)
+
+        e = FirecrawlEngine(api_key="fc-test")
+
+        import tempfile
+        with tempfile.NamedTemporaryFile(suffix=".pdf", delete=False) as f:
+            f.write(b"%PDF-1.4 fake pdf content")
+            tmp_path = f.name
+
+        try:
+            with patch("urllib.request.urlopen", return_value=mock_resp) as mock_urlopen:
+                result = await e.process(tmp_path, output_format=OutputFormat.MARKDOWN)
+
+            assert result.content == "# Invoice\n\nTotal: $100"
+            assert result.engine_name == "firecrawl"
+            assert result.format == OutputFormat.MARKDOWN
+            assert result.processing_time_ms > 0
+
+            # Verify the request was made with correct URL
+            req = mock_urlopen.call_args[0][0]
+            assert "/v1/scrape" in req.full_url
+            body = json.loads(req.data)
+            assert "rawContent" in body
+        finally:
+            import os
+            os.unlink(tmp_path)
+
+    @pytest.mark.asyncio
+    async def test_process_html(self):
+        """Firecrawl should handle HTML files via urllib POST."""
+        import json
+        from unittest.mock import MagicMock
+
+        from docfold.engines.base import OutputFormat
+        from docfold.engines.firecrawl_engine import FirecrawlEngine
+
+        api_response = json.dumps({
+            "success": True,
+            "data": {
+                "markdown": "# Page Title\n\nSome content",
+                "metadata": {"title": "Page Title"},
+            },
+        }).encode()
+
+        mock_resp = MagicMock()
+        mock_resp.read.return_value = api_response
+        mock_resp.__enter__ = MagicMock(return_value=mock_resp)
+        mock_resp.__exit__ = MagicMock(return_value=False)
+
+        e = FirecrawlEngine(api_key="fc-test")
+
+        import tempfile
+        with tempfile.NamedTemporaryFile(suffix=".html", delete=False, mode="w") as f:
+            f.write("<html><body><h1>Page Title</h1><p>Some content</p></body></html>")
+            tmp_path = f.name
+
+        try:
+            with patch("urllib.request.urlopen", return_value=mock_resp) as mock_urlopen:
+                result = await e.process(tmp_path, output_format=OutputFormat.MARKDOWN)
+
+            assert result.content == "# Page Title\n\nSome content"
+            assert result.engine_name == "firecrawl"
+
+            # Verify HTML sent via "html" key, not rawContent
+            req = mock_urlopen.call_args[0][0]
+            body = json.loads(req.data)
+            assert "html" in body
+            assert "rawContent" not in body
+        finally:
+            import os
+            os.unlink(tmp_path)
+
+    @pytest.mark.asyncio
+    async def test_process_api_error(self):
+        """Firecrawl should raise on API errors."""
+        from urllib.error import HTTPError
+
+        from docfold.engines.base import OutputFormat
+        from docfold.engines.firecrawl_engine import FirecrawlEngine
+
+        e = FirecrawlEngine(api_key="bad-key")
+
+        import tempfile
+        with tempfile.NamedTemporaryFile(suffix=".pdf", delete=False) as f:
+            f.write(b"%PDF-1.4 fake")
+            tmp_path = f.name
+
+        try:
+            with patch(
+                "urllib.request.urlopen",
+                side_effect=HTTPError(
+                    url="https://api.firecrawl.dev/v1/scrape",
+                    code=401, msg="Unauthorized", hdrs={}, fp=None,
+                ),
+            ):
+                with pytest.raises(HTTPError):
+                    await e.process(tmp_path, output_format=OutputFormat.MARKDOWN)
+        finally:
+            import os
+            os.unlink(tmp_path)
+
+
 class TestAllEnginesImplementInterface:
     """Verify every adapter satisfies the DocumentEngine ABC."""
 
@@ -792,13 +965,14 @@ class TestAllEnginesImplementInterface:
         "docfold.engines.nougat_engine.NougatEngine",
         "docfold.engines.surya_engine.SuryaEngine",
         "docfold.engines.docling_serve_engine.DoclingServeEngine",
+        "docfold.engines.firecrawl_engine.FirecrawlEngine",
     ])
     def test_has_required_attributes(self, engine_cls_path):
         module_path, cls_name = engine_cls_path.rsplit(".", 1)
         import importlib
         mod = importlib.import_module(module_path)
         cls = getattr(mod, cls_name)
-        _needs_key = {"MarkerEngine", "LlamaParseEngine", "MistralOCREngine"}
+        _needs_key = {"MarkerEngine", "LlamaParseEngine", "MistralOCREngine", "FirecrawlEngine"}
         _needs_url = {"DoclingServeEngine"}
         if cls_name in _needs_key:
             engine = cls(api_key="test")

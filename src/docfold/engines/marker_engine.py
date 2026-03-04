@@ -25,7 +25,13 @@ import time
 from pathlib import Path
 from typing import Any
 
-from docfold.engines.base import DocumentEngine, EngineCapabilities, EngineResult, OutputFormat
+from docfold.engines.base import (
+    BoundingBox,
+    DocumentEngine,
+    EngineCapabilities,
+    EngineResult,
+    OutputFormat,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -232,14 +238,14 @@ class MarkerEngine(DocumentEngine):
                     ):
                         bbox_raw = block.get("bbox")
                         if bbox_raw:
-                            bboxes.append({
-                                "type": block.get("block_type", "Text"),
-                                "bbox": bbox_raw,
-                                "page": page_num,
-                                "text": block.get("html", ""),
-                                "id": block.get("id") or f"p{page_num}-b{idx}",
-                                "polygon": block.get("polygon"),
-                            })
+                            bboxes.append(BoundingBox(
+                                type=block.get("block_type", "Text"),
+                                bbox=bbox_raw,
+                                page=page_num,
+                                text=block.get("html", ""),
+                                id=block.get("id") or f"p{page_num}-b{idx}",
+                                polygon=block.get("polygon"),
+                            ).to_dict())
                         block_html = block.get("html", "")
                         if block_html:
                             html_parts.append(block_html)

@@ -28,6 +28,57 @@ class OutputFormat(str, Enum):
 
 
 @dataclass
+class BoundingBox:
+    """Unified bounding box for a layout element.
+
+    All engines must produce bounding boxes in this format.  Fields that
+    an engine cannot populate should be left at their defaults.
+
+    Detailization varies by engine:
+    - **pymupdf** — block-level boxes (Text / Image), no polygon.
+    - **marker** — block-level with rich types (SectionHeader, Table, …),
+      polygon coordinates, and per-block confidence.
+    - **docling** / cloud engines — may include reading order and table cells.
+    """
+
+    type: str
+    """Block type: ``Text``, ``Image``, ``Table``, ``SectionHeader``, etc."""
+
+    bbox: list[float]
+    """Bounding rectangle as ``[x0, y0, x1, y1]`` in PDF points."""
+
+    page: int
+    """1-based page number."""
+
+    text: str = ""
+    """Text content of the block (empty for images)."""
+
+    id: str = ""
+    """Unique identifier within the document (e.g. ``p1-b0``)."""
+
+    polygon: list[list[float]] | None = None
+    """Precise polygon outline ``[[x,y], ...]`` (when available)."""
+
+    confidence: float | None = None
+    """Per-block confidence score in ``[0, 1]`` (when available)."""
+
+    def to_dict(self) -> dict[str, Any]:
+        """Serialize to a plain dict, omitting None optional fields."""
+        d: dict[str, Any] = {
+            "type": self.type,
+            "bbox": self.bbox,
+            "page": self.page,
+            "text": self.text,
+            "id": self.id,
+        }
+        if self.polygon is not None:
+            d["polygon"] = self.polygon
+        if self.confidence is not None:
+            d["confidence"] = self.confidence
+        return d
+
+
+@dataclass
 class EngineResult:
     """Unified result returned by all structuring engines.
 
@@ -59,7 +110,11 @@ class EngineResult:
     """Extracted tables as list of row-dicts."""
 
     bounding_boxes: list[dict[str, Any]] | None = None
-    """Layout element bounding boxes ``[{type, bbox, page, ...}]``."""
+    """Layout element bounding boxes — list of :class:`BoundingBox`-shaped dicts.
+
+    Each dict must contain at least ``type``, ``bbox``, and ``page``.
+    Use :meth:`BoundingBox.to_dict` to produce conformant entries.
+    """
 
     confidence: float | None = None
     """Overall confidence score in [0, 1] (if the engine provides one)."""

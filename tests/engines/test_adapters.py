@@ -122,6 +122,43 @@ class TestPyMuPDFEngine:
             result = e.is_available()
             assert isinstance(result, bool)
 
+    def test_capabilities_declare_bounding_boxes(self):
+        from docfold.engines.pymupdf_engine import PyMuPDFEngine
+        e = PyMuPDFEngine()
+        assert e.capabilities.bounding_boxes is True
+
+    @pytest.mark.asyncio
+    async def test_process_returns_bounding_boxes(self, tmp_path):
+        """PyMuPDF should return bounding boxes for a simple PDF."""
+        try:
+            import fitz
+        except ImportError:
+            pytest.skip("pymupdf not installed")
+
+        from docfold.engines.base import OutputFormat
+        from docfold.engines.pymupdf_engine import PyMuPDFEngine
+
+        # Create a minimal PDF with text
+        pdf_path = str(tmp_path / "test.pdf")
+        doc = fitz.open()
+        page = doc.new_page()
+        page.insert_text((72, 72), "Hello World", fontsize=12)
+        doc.save(pdf_path)
+        doc.close()
+
+        engine = PyMuPDFEngine()
+        result = await engine.process(pdf_path, output_format=OutputFormat.HTML)
+
+        assert result.pages == 1
+        assert result.bounding_boxes is not None
+        assert len(result.bounding_boxes) > 0
+        bbox = result.bounding_boxes[0]
+        assert "bbox" in bbox
+        assert "page" in bbox
+        assert bbox["page"] == 1
+        assert "type" in bbox
+        assert "text" in bbox
+
 
 class TestPaddleOCREngine:
     def test_name(self):
@@ -537,7 +574,7 @@ class TestEngineCapabilities:
     def test_pymupdf_default_capabilities(self):
         from docfold.engines.pymupdf_engine import PyMuPDFEngine
         caps = PyMuPDFEngine().capabilities
-        assert caps.bounding_boxes is False
+        assert caps.bounding_boxes is True
         assert caps.confidence is False
         assert caps.table_structure is False
 

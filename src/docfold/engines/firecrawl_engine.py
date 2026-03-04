@@ -1,12 +1,10 @@
-"""Firecrawl engine adapter.
-
-Install: ``pip install docfold[firecrawl]``
+"""Firecrawl engine adapter — plain HTTP, no SDK dependency.
 
 Requires a Firecrawl API key: https://www.firecrawl.dev/
 
-Firecrawl converts documents (PDF, DOCX, images, HTML) into clean markdown.
-It handles scanned PDFs via OCR, JavaScript-rendered web pages, and produces
-high-quality structured markdown output with tables and headings preserved.
+Firecrawl converts documents (PDF, DOCX, images, HTML) into clean markdown
+via a simple REST API.  This adapter calls ``POST /v1/scrape`` directly
+with ``urllib``, so no extra packages are needed.
 
 Example::
 
@@ -16,9 +14,13 @@ Example::
 
 from __future__ import annotations
 
+import asyncio
+import base64
+import json
 import logging
 import os
 import time
+import urllib.request
 from pathlib import Path
 from typing import Any
 
@@ -32,12 +34,10 @@ _TEXT_EXTENSIONS = {"html", "htm", "xml"}
 
 
 class FirecrawlEngine(DocumentEngine):
-    """Adapter for the Firecrawl API (SaaS).
+    """Adapter for the Firecrawl API via plain HTTP.
 
-    Firecrawl converts documents and web content into clean, structured
-    markdown.  Supports PDF (text and scanned), Office documents, images,
-    and HTML.  Handles JavaScript rendering, removes boilerplate, and
-    extracts the main content with headings and tables preserved.
+    Calls ``POST /v1/scrape`` with ``urllib.request``.  No extra
+    dependencies beyond the standard library.
 
     Example::
 
@@ -76,12 +76,7 @@ class FirecrawlEngine(DocumentEngine):
         )
 
     def is_available(self) -> bool:
-        try:
-            import firecrawl  # noqa: F401
-
-            return bool(self._api_key)
-        except ImportError:
-            return False
+        return bool(self._api_key)
 
     async def process(
         self,
@@ -89,19 +84,15 @@ class FirecrawlEngine(DocumentEngine):
         output_format: OutputFormat = OutputFormat.MARKDOWN,
         **kwargs: Any,
     ) -> EngineResult:
-        """Process a document via the Firecrawl API.
+        """Process a document via the Firecrawl REST API.
 
-        Supports PDF, DOCX, images, and HTML files.  Binary files (PDF,
-        images, DOCX) are uploaded directly; text-based files (HTML) are
-        read and sent as raw content.
+        Supports PDF, DOCX, images, and HTML files.
         """
-        import asyncio
-
         start = time.perf_counter()
 
         loop = asyncio.get_running_loop()
         content, metadata = await loop.run_in_executor(
-            None, self._extract, file_path, output_format
+            None, self._call_api, file_path, output_format,
         )
 
         elapsed_ms = int((time.perf_counter() - start) * 1000)
@@ -114,15 +105,11 @@ class FirecrawlEngine(DocumentEngine):
             metadata=metadata,
         )
 
-    def _extract(
+    def _call_api(
         self,
         file_path: str,
         output_format: OutputFormat,
     ) -> tuple[str, dict[str, Any]]:
-        from firecrawl import FirecrawlApp
-
-        app = FirecrawlApp(api_key=self._api_key, api_url=self._api_url)
-
         ext = Path(file_path).suffix.lstrip(".").lower()
 
         fmt_map = {
@@ -133,44 +120,43 @@ class FirecrawlEngine(DocumentEngine):
         }
         requested_fmt = fmt_map[output_format]
 
+        body: dict[str, Any] = {
+            "url": f"raw:{file_path}",
+            "formats": [requested_fmt],
+            "timeout": self._timeout * 1000,
+        }
+
         if ext in _TEXT_EXTENSIONS:
             with open(file_path, encoding="utf-8") as f:
-                html_content = f.read()
-
-            result = app.scrape_url(
-                f"raw:{file_path}",
-                params={
-                    "formats": [requested_fmt],
-                    "rawHtml": html_content,
-                    "timeout": self._timeout * 1000,
-                },
-            )
+                body["html"] = f.read()
         else:
-            # Binary files: PDF, DOCX, images — upload directly
             with open(file_path, "rb") as f:
-                file_bytes = f.read()
+                raw = f.read()
+            body["rawContent"] = base64.b64encode(raw).decode()
 
-            result = app.scrape_url(
-                f"raw:{file_path}",
-                params={
-                    "formats": [requested_fmt],
-                    "rawContent": file_bytes,
-                    "timeout": self._timeout * 1000,
-                },
-            )
+        url = f"{self._api_url.rstrip('/')}/v1/scrape"
+        payload = json.dumps(body).encode()
 
-        content = ""
-        if isinstance(result, dict):
-            content = result.get(requested_fmt, result.get("markdown", ""))
-            metadata = result.get("metadata", {})
-        else:
-            content = str(result)
-            metadata = {}
+        req = urllib.request.Request(
+            url,
+            data=payload,
+            headers={
+                "Authorization": f"Bearer {self._api_key}",
+                "Content-Type": "application/json",
+            },
+            method="POST",
+        )
+
+        with urllib.request.urlopen(req, timeout=self._timeout) as resp:
+            resp_data = json.loads(resp.read())
+
+        data = resp_data.get("data", {})
+        content = data.get(requested_fmt, data.get("markdown", ""))
+        metadata = data.get("metadata", {})
 
         # For text output, strip markdown formatting
         if output_format == OutputFormat.TEXT:
             import re
-
             content = re.sub(r"[#*_`~\[\]]", "", content)
 
         return content, metadata

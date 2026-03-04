@@ -104,6 +104,7 @@ class TestBoundingBox:
             "type": "Text",
             "bbox": [10, 20, 100, 50],
             "page": 1,
+            "page_index": 0,
             "text": "",
             "id": "",
         }
@@ -144,10 +145,26 @@ class TestBoundingBox:
         )
         d = bb.to_dict()
         assert d["type"] == "SectionHeader"
+        assert d["page"] == 2
+        assert d["page_index"] == 1  # 0-based = page - 1
         assert d["polygon"] == [[50, 100], [550, 100], [550, 200], [50, 200]]
         assert d["confidence"] == 0.95
         assert d["page_width"] == 612.0
         assert d["page_height"] == 792.0
+
+    def test_page_index_is_zero_based(self):
+        """page_index must be 0-based for frontend array indexing.
+
+        The frontend's derivePageIndex() checks page_index BEFORE page.
+        Without page_index, 1-based page values cause off-by-one:
+        page 1 boxes appear on viewer page 2.
+        """
+        for page_num in [1, 2, 3, 10]:
+            bb = BoundingBox(type="Text", bbox=[0, 0, 100, 100], page=page_num)
+            d = bb.to_dict()
+            assert d["page"] == page_num
+            assert d["page_index"] == page_num - 1
+            assert d["page_index"] >= 0
 
     def test_page_dimensions_required_for_normalization(self):
         """Verify that page_width/page_height allow correct 0-1 normalization.

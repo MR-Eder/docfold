@@ -48,7 +48,7 @@ class BoundingBox:
     """Bounding rectangle as ``[x0, y0, x1, y1]`` in PDF points."""
 
     page: int
-    """1-based page number."""
+    """1-based page number (for display/labels)."""
 
     text: str = ""
     """Text content of the block (empty for images)."""
@@ -74,6 +74,7 @@ class BoundingBox:
             "type": self.type,
             "bbox": self.bbox,
             "page": self.page,
+            "page_index": self.page - 1,
             "text": self.text,
             "id": self.id,
         }

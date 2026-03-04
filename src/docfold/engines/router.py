@@ -31,11 +31,12 @@ _EXTENSION_PRIORITY: dict[str, list[str]] = {
     # --- PDF ---
     "pdf": [
         "docling", "mineru", "unstructured", "marker",
-        "llamaparse", "mistral_ocr", "google_docai", "azure_docint", "textract",
-        "zerox", "nougat", "surya", "pymupdf", "paddleocr", "tesseract", "easyocr",
+        "llamaparse", "mistral_ocr", "firecrawl", "google_docai", "azure_docint",
+        "textract", "zerox", "nougat", "surya", "pymupdf", "paddleocr", "tesseract",
+        "easyocr",
     ],
     # --- Office ---
-    "docx": ["docling", "marker", "unstructured", "llamaparse", "azure_docint"],
+    "docx": ["docling", "marker", "unstructured", "llamaparse", "firecrawl", "azure_docint"],
     "doc":  ["docling", "marker", "unstructured", "llamaparse", "azure_docint"],
     "pptx": ["docling", "marker", "unstructured", "llamaparse", "azure_docint"],
     "ppt":  ["docling", "marker", "unstructured", "llamaparse", "azure_docint"],

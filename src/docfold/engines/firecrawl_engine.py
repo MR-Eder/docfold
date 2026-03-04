@@ -4,14 +4,14 @@ Install: ``pip install docfold[firecrawl]``
 
 Requires a Firecrawl API key: https://www.firecrawl.dev/
 
-Firecrawl converts web pages and HTML documents into clean markdown.
-It excels at extracting structured content from web pages, handling
-JavaScript-rendered content, and producing high-quality markdown output.
+Firecrawl converts documents (PDF, DOCX, images, HTML) into clean markdown.
+It handles scanned PDFs via OCR, JavaScript-rendered web pages, and produces
+high-quality structured markdown output with tables and headings preserved.
 
 Example::
 
     engine = FirecrawlEngine(api_key="fc-...")
-    result = await engine.process("page.html", output_format=OutputFormat.MARKDOWN)
+    result = await engine.process("report.pdf", output_format=OutputFormat.MARKDOWN)
 """
 
 from __future__ import annotations
@@ -19,26 +19,30 @@ from __future__ import annotations
 import logging
 import os
 import time
+from pathlib import Path
 from typing import Any
 
 from docfold.engines.base import DocumentEngine, EngineCapabilities, EngineResult, OutputFormat
 
 logger = logging.getLogger(__name__)
 
-_SUPPORTED_EXTENSIONS = {"html", "htm", "xml"}
+_SUPPORTED_EXTENSIONS = {"pdf", "docx", "png", "jpg", "jpeg", "tiff", "html", "htm", "xml"}
+
+_TEXT_EXTENSIONS = {"html", "htm", "xml"}
 
 
 class FirecrawlEngine(DocumentEngine):
     """Adapter for the Firecrawl API (SaaS).
 
-    Firecrawl converts HTML / web content into clean, structured markdown.
-    It handles JavaScript rendering, removes boilerplate, and extracts
-    the main content with headings and tables preserved.
+    Firecrawl converts documents and web content into clean, structured
+    markdown.  Supports PDF (text and scanned), Office documents, images,
+    and HTML.  Handles JavaScript rendering, removes boilerplate, and
+    extracts the main content with headings and tables preserved.
 
     Example::
 
         engine = FirecrawlEngine(api_key="fc-...")
-        result = await engine.process("page.html")
+        result = await engine.process("report.pdf")
     """
 
     def __init__(
@@ -85,10 +89,11 @@ class FirecrawlEngine(DocumentEngine):
         output_format: OutputFormat = OutputFormat.MARKDOWN,
         **kwargs: Any,
     ) -> EngineResult:
-        """Process an HTML file via the Firecrawl API.
+        """Process a document via the Firecrawl API.
 
-        Reads the HTML file, sends it to Firecrawl for conversion,
-        and returns a clean structured result.
+        Supports PDF, DOCX, images, and HTML files.  Binary files (PDF,
+        images, DOCX) are uploaded directly; text-based files (HTML) are
+        read and sent as raw content.
         """
         import asyncio
 
@@ -118,9 +123,7 @@ class FirecrawlEngine(DocumentEngine):
 
         app = FirecrawlApp(api_key=self._api_key, api_url=self._api_url)
 
-        # Read local HTML file content
-        with open(file_path, encoding="utf-8") as f:
-            html_content = f.read()
+        ext = Path(file_path).suffix.lstrip(".").lower()
 
         fmt_map = {
             OutputFormat.MARKDOWN: "markdown",
@@ -130,14 +133,31 @@ class FirecrawlEngine(DocumentEngine):
         }
         requested_fmt = fmt_map[output_format]
 
-        result = app.scrape_url(
-            f"raw:{file_path}",
-            params={
-                "formats": [requested_fmt],
-                "rawHtml": html_content,
-                "timeout": self._timeout * 1000,
-            },
-        )
+        if ext in _TEXT_EXTENSIONS:
+            with open(file_path, encoding="utf-8") as f:
+                html_content = f.read()
+
+            result = app.scrape_url(
+                f"raw:{file_path}",
+                params={
+                    "formats": [requested_fmt],
+                    "rawHtml": html_content,
+                    "timeout": self._timeout * 1000,
+                },
+            )
+        else:
+            # Binary files: PDF, DOCX, images — upload directly
+            with open(file_path, "rb") as f:
+                file_bytes = f.read()
+
+            result = app.scrape_url(
+                f"raw:{file_path}",
+                params={
+                    "formats": [requested_fmt],
+                    "rawContent": file_bytes,
+                    "timeout": self._timeout * 1000,
+                },
+            )
 
         content = ""
         if isinstance(result, dict):

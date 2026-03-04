@@ -24,7 +24,7 @@ This guide helps you choose the right document processing engine for your use ca
 | AWS Textract | SaaS | Paid | ★★★ | ★★★ | ★★★ | ★☆☆ | ★★☆ | Fast | ~$1.50/1K pages |
 | Google Document AI | SaaS | Paid | ★★★ | ★★★ | ★★★ | ★★☆ | ★★★ | Fast | ~$1.50/1K pages |
 | Azure Document Intelligence | SaaS | Paid | ★★★ | ★★★ | ★★★ | ★★☆ | ★★★ | Fast | ~$1.50/1K pages |
-| **Firecrawl** | SaaS | Paid | ★★☆ | ☆☆☆ | ★★☆ | ☆☆☆ | ★★★ | Fast | ~$1/1K pages |
+| **Firecrawl** | SaaS | Paid | ★★☆ | ★★☆ | ★★☆ | ☆☆☆ | ★★★ | Fast | ~$1/1K pages |
 
 **Rating scale:** ★★★ Excellent | ★★☆ Good | ★☆☆ Basic | ☆☆☆ Not supported
 
@@ -183,10 +183,10 @@ This guide helps you choose the right document processing engine for your use ca
 
 ### Firecrawl
 
-**Best for:** Converting web pages and HTML documents to clean, structured markdown.
+**Best for:** Converting documents and web pages to clean, structured markdown.
 
-- **Strengths:** Excellent at extracting main content from HTML, removing boilerplate (ads, navigation, footers). Handles JavaScript-rendered content. Clean markdown output with headings and tables preserved. Good multilingual support. Fast cloud API.
-- **Weaknesses:** HTML/web content only — cannot process PDFs, images, or Office formats. No OCR capability. No bounding boxes or confidence scores. Cloud API dependency. Costs money at scale.
+- **Strengths:** Supports PDF (text and scanned via OCR), DOCX, images, and HTML. Excellent at extracting main content from web pages, removing boilerplate (ads, navigation, footers). Handles JavaScript-rendered content. Clean markdown output with headings and tables preserved. Good multilingual support. Fast cloud API.
+- **Weaknesses:** No bounding boxes or confidence scores. Cloud API dependency. Costs money at scale.
 - **GPU:** N/A (cloud).
 - **Cost:** Free tier available; paid plans from ~$1/1000 pages.
 - **Install:** `pip install docfold[firecrawl]`
@@ -270,7 +270,7 @@ Capabilities each engine can populate in `EngineResult`:
 | **Azure DocInt** | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | — | — | — |
 | **Nougat** | ✅ | — | — | — | — | — | — | — | — |
 | **Surya** | ✅ | — | — | — | — | ✅ | — | — | — |
-| **Firecrawl** | — | — | — | — | ✅ | — | — | — | — |
+| **Firecrawl** | ✅ | ✅ | — | — | ✅ | ✅ | — | — | — |
 
 *\* PDF pages are rendered to images before OCR.*
 

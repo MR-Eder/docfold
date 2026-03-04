@@ -656,9 +656,13 @@ class TestFirecrawlEngine:
         from docfold.engines.firecrawl_engine import FirecrawlEngine
         e = FirecrawlEngine()
         exts = e.supported_extensions
+        assert "pdf" in exts
         assert "html" in exts
         assert "htm" in exts
         assert "xml" in exts
+        assert "docx" in exts
+        assert "png" in exts
+        assert "jpg" in exts
 
     def test_is_available_without_key(self):
         from docfold.engines.firecrawl_engine import FirecrawlEngine
@@ -694,6 +698,82 @@ class TestFirecrawlEngine:
         assert caps.bounding_boxes is False
         assert caps.confidence is False
         assert caps.images is False
+
+    @pytest.mark.asyncio
+    async def test_process_pdf(self):
+        """Firecrawl should handle PDF files via binary upload."""
+        from unittest.mock import MagicMock
+
+        from docfold.engines.base import OutputFormat
+        from docfold.engines.firecrawl_engine import FirecrawlEngine
+
+        mock_app = MagicMock()
+        mock_app.scrape_url.return_value = {
+            "markdown": "# Invoice\n\nTotal: $100",
+            "metadata": {"title": "Invoice", "sourceURL": "raw:test.pdf"},
+        }
+
+        e = FirecrawlEngine(api_key="fc-test")
+
+        import tempfile
+        with tempfile.NamedTemporaryFile(suffix=".pdf", delete=False) as f:
+            f.write(b"%PDF-1.4 fake pdf content")
+            tmp_path = f.name
+
+        try:
+            import types
+            mock_firecrawl = types.ModuleType("firecrawl")
+            mock_firecrawl.FirecrawlApp = lambda *a, **kw: mock_app
+            with patch.dict("sys.modules", {"firecrawl": mock_firecrawl}):
+                result = await e.process(tmp_path, output_format=OutputFormat.MARKDOWN)
+
+            assert result.content == "# Invoice\n\nTotal: $100"
+            assert result.engine_name == "firecrawl"
+            assert result.format == OutputFormat.MARKDOWN
+            assert result.processing_time_ms > 0
+
+            # Verify binary upload was used for PDF (not text read)
+            call_args = mock_app.scrape_url.call_args
+            assert call_args is not None
+            params = call_args[1].get("params") or call_args[0][1]
+            assert "rawContent" in params
+        finally:
+            import os
+            os.unlink(tmp_path)
+
+    @pytest.mark.asyncio
+    async def test_process_html(self):
+        """Firecrawl should handle HTML files via text content."""
+        from unittest.mock import MagicMock
+
+        from docfold.engines.base import OutputFormat
+        from docfold.engines.firecrawl_engine import FirecrawlEngine
+
+        mock_app = MagicMock()
+        mock_app.scrape_url.return_value = {
+            "markdown": "# Page Title\n\nSome content",
+            "metadata": {"title": "Page Title"},
+        }
+
+        e = FirecrawlEngine(api_key="fc-test")
+
+        import tempfile
+        with tempfile.NamedTemporaryFile(suffix=".html", delete=False, mode="w") as f:
+            f.write("<html><body><h1>Page Title</h1><p>Some content</p></body></html>")
+            tmp_path = f.name
+
+        try:
+            import types
+            mock_firecrawl = types.ModuleType("firecrawl")
+            mock_firecrawl.FirecrawlApp = lambda *a, **kw: mock_app
+            with patch.dict("sys.modules", {"firecrawl": mock_firecrawl}):
+                result = await e.process(tmp_path, output_format=OutputFormat.MARKDOWN)
+
+            assert result.content == "# Page Title\n\nSome content"
+            assert result.engine_name == "firecrawl"
+        finally:
+            import os
+            os.unlink(tmp_path)
 
 
 class TestAllEnginesImplementInterface:

@@ -89,6 +89,9 @@ class PyMuPDFEngine(DocumentEngine):
 
             # Extract block-level bounding boxes via get_text("dict")
             try:
+                rect = page.rect
+                pw = float(rect.width)
+                ph = float(rect.height)
                 page_dict = page.get_text("dict", flags=fitz.TEXT_PRESERVE_WHITESPACE)
                 for block_idx, block in enumerate(page_dict.get("blocks", [])):
                     bbox_raw = block.get("bbox")
@@ -111,6 +114,8 @@ class PyMuPDFEngine(DocumentEngine):
                         page=page_num,
                         text=text,
                         id=f"p{page_num}-b{block_idx}",
+                        page_width=pw,
+                        page_height=ph,
                     ).to_dict())
             except Exception as exc:
                 logger.debug("Failed to extract bboxes from page %d: %s", page_num, exc)

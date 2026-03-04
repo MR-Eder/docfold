@@ -233,6 +233,16 @@ class MarkerEngine(DocumentEngine):
                     json_tree.get("children") or [],
                 ):
                     page_num = page_idx + 1
+                    # Page dimensions from the Page node bbox [0, 0, W, H]
+                    page_bbox = page_node.get("bbox")
+                    pw: float | None = None
+                    ph: float | None = None
+                    if (
+                        isinstance(page_bbox, list)
+                        and len(page_bbox) >= 4
+                    ):
+                        pw = float(page_bbox[2] - page_bbox[0])
+                        ph = float(page_bbox[3] - page_bbox[1])
                     for idx, block in enumerate(
                         page_node.get("children") or [],
                     ):
@@ -245,6 +255,8 @@ class MarkerEngine(DocumentEngine):
                                 text=block.get("html", ""),
                                 id=block.get("id") or f"p{page_num}-b{idx}",
                                 polygon=block.get("polygon"),
+                                page_width=pw,
+                                page_height=ph,
                             ).to_dict())
                         block_html = block.get("html", "")
                         if block_html:

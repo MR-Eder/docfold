@@ -159,6 +159,94 @@ class TestPyMuPDFEngine:
         assert "type" in bbox
         assert "text" in bbox
 
+    @pytest.mark.asyncio
+    async def test_bboxes_include_page_dimensions(self, tmp_path):
+        """Every bbox must include page_width/page_height for frontend normalization.
+
+        Without page dimensions, the frontend cannot normalize absolute PDF
+        point coordinates to 0-1 range, causing giant overlapping overlays.
+        """
+        try:
+            import fitz
+        except ImportError:
+            pytest.skip("pymupdf not installed")
+
+        from docfold.engines.base import OutputFormat
+        from docfold.engines.pymupdf_engine import PyMuPDFEngine
+
+        pdf_path = str(tmp_path / "test.pdf")
+        doc = fitz.open()
+        # Letter size: 612 x 792 points
+        page = doc.new_page(width=612, height=792)
+        page.insert_text((72, 72), "Hello World", fontsize=12)
+        page.insert_text((72, 200), "Second block", fontsize=12)
+        doc.save(pdf_path)
+        doc.close()
+
+        engine = PyMuPDFEngine()
+        result = await engine.process(pdf_path, output_format=OutputFormat.MARKDOWN)
+
+        assert result.bounding_boxes is not None
+        assert len(result.bounding_boxes) >= 1
+
+        for bbox in result.bounding_boxes:
+            # page_width and page_height MUST be present
+            assert "page_width" in bbox, (
+                f"Missing page_width in bbox {bbox['id']}"
+            )
+            assert "page_height" in bbox, (
+                f"Missing page_height in bbox {bbox['id']}"
+            )
+            assert bbox["page_width"] == pytest.approx(612.0, abs=1)
+            assert bbox["page_height"] == pytest.approx(792.0, abs=1)
+
+            # bbox coordinates must be within page bounds
+            x0, y0, x1, y1 = bbox["bbox"]
+            assert 0 <= x0 <= bbox["page_width"]
+            assert 0 <= y0 <= bbox["page_height"]
+            assert 0 <= x1 <= bbox["page_width"]
+            assert 0 <= y1 <= bbox["page_height"]
+
+    @pytest.mark.asyncio
+    async def test_bboxes_normalizable_to_zero_one(self, tmp_path):
+        """Simulates frontend normalization: all bboxes must produce 0-1 values."""
+        try:
+            import fitz
+        except ImportError:
+            pytest.skip("pymupdf not installed")
+
+        from docfold.engines.base import OutputFormat
+        from docfold.engines.pymupdf_engine import PyMuPDFEngine
+
+        pdf_path = str(tmp_path / "test.pdf")
+        doc = fitz.open()
+        page = doc.new_page(width=595, height=842)  # A4
+        page.insert_text((50, 100), "Test content for normalization", fontsize=11)
+        doc.save(pdf_path)
+        doc.close()
+
+        engine = PyMuPDFEngine()
+        result = await engine.process(pdf_path, output_format=OutputFormat.MARKDOWN)
+
+        assert result.bounding_boxes
+        for bbox in result.bounding_boxes:
+            pw = bbox["page_width"]
+            ph = bbox["page_height"]
+            x0, y0, x1, y1 = bbox["bbox"]
+            # Normalize like the frontend does
+            nx = x0 / pw
+            ny = y0 / ph
+            nw = (x1 - x0) / pw
+            nh = (y1 - y0) / ph
+            assert 0 <= nx <= 1, f"Normalized x={nx} out of range"
+            assert 0 <= ny <= 1, f"Normalized y={ny} out of range"
+            assert 0 < nw <= 1, f"Normalized width={nw} out of range"
+            assert 0 < nh <= 1, f"Normalized height={nh} out of range"
+            # No single block should cover > 95% of page
+            assert nw < 0.95 or nh < 0.95, (
+                f"Block covers entire page: w={nw:.2f} h={nh:.2f}"
+            )
+
 
 class TestPaddleOCREngine:
     def test_name(self):

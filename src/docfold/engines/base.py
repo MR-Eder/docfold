@@ -62,6 +62,12 @@ class BoundingBox:
     confidence: float | None = None
     """Per-block confidence score in ``[0, 1]`` (when available)."""
 
+    page_width: float | None = None
+    """Page width in PDF points (needed for coordinate normalization)."""
+
+    page_height: float | None = None
+    """Page height in PDF points (needed for coordinate normalization)."""
+
     def to_dict(self) -> dict[str, Any]:
         """Serialize to a plain dict, omitting None optional fields."""
         d: dict[str, Any] = {
@@ -75,6 +81,10 @@ class BoundingBox:
             d["polygon"] = self.polygon
         if self.confidence is not None:
             d["confidence"] = self.confidence
+        if self.page_width is not None:
+            d["page_width"] = self.page_width
+        if self.page_height is not None:
+            d["page_height"] = self.page_height
         return d
 
 

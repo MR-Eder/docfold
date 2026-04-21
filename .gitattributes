@@ -1,0 +1,8 @@
+# Force LF line endings on shell scripts and Dockerfiles regardless of
+# the contributor's platform. Docker images build on Linux and invoke
+# /bin/sh with the shebang on the first line — a CRLF turns #!/bin/sh
+# into #!/bin/sh\r, which Linux tries to exec literally and fails with
+# "no such file or directory".
+*.sh        text eol=lf
+Dockerfile  text eol=lf
+Dockerfile.* text eol=lf

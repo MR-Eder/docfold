@@ -135,9 +135,7 @@ class EvaluationRunner:
             processing_time_ms=result.processing_time_ms,
         )
 
-    def _discover_ground_truth(
-        self, categories: list[str] | None
-    ) -> list[tuple[Path, Path]]:
+    def _discover_ground_truth(self, categories: list[str] | None) -> list[tuple[Path, Path]]:
         """Find (document, ground_truth.json) pairs in the dataset."""
         pairs = []
         for gt_file in self.dataset_path.rglob("*.ground_truth.json"):

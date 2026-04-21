@@ -14,10 +14,32 @@ from docfold.engines.base import DocumentEngine, EngineCapabilities, EngineResul
 logger = logging.getLogger(__name__)
 
 _SUPPORTED_EXTENSIONS = {
-    "pdf", "docx", "doc", "pptx", "ppt", "xlsx", "xls",
-    "html", "htm", "xml", "csv", "tsv", "txt", "rtf",
-    "png", "jpg", "jpeg", "tiff", "tif", "bmp",
-    "eml", "msg", "epub", "odt", "rst", "md",
+    "pdf",
+    "docx",
+    "doc",
+    "pptx",
+    "ppt",
+    "xlsx",
+    "xls",
+    "html",
+    "htm",
+    "xml",
+    "csv",
+    "tsv",
+    "txt",
+    "rtf",
+    "png",
+    "jpg",
+    "jpeg",
+    "tiff",
+    "tif",
+    "bmp",
+    "eml",
+    "msg",
+    "epub",
+    "odt",
+    "rst",
+    "md",
 }
 
 

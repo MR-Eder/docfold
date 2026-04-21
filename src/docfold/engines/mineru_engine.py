@@ -41,12 +41,15 @@ class MinerUEngine(DocumentEngine):
     @property
     def capabilities(self) -> EngineCapabilities:
         return EngineCapabilities(
-            table_structure=True, heading_detection=True, reading_order=True,
+            table_structure=True,
+            heading_detection=True,
+            reading_order=True,
         )
 
     def is_available(self) -> bool:
         try:
             import magic_pdf  # noqa: F401
+
             return True
         except ImportError:
             return False

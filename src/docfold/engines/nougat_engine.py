@@ -60,6 +60,7 @@ class NougatEngine(DocumentEngine):
     def is_available(self) -> bool:
         try:
             import nougat  # noqa: F401
+
             return True
         except Exception:
             return False
@@ -90,9 +91,7 @@ class NougatEngine(DocumentEngine):
             metadata={"model": self._model},
         )
 
-    def _do_process(
-        self, file_path: str, output_format: OutputFormat
-    ) -> tuple[str, int]:
+    def _do_process(self, file_path: str, output_format: OutputFormat) -> tuple[str, int]:
         import torch
         from nougat import NougatModel
         from nougat.postprocessing import markdown_compatible
@@ -105,7 +104,9 @@ class NougatEngine(DocumentEngine):
         model.eval()
 
         dataset = LazyDataset(
-            file_path, None, None,
+            file_path,
+            None,
+            None,
             model.encoder.prepare_input,
         )
         dataloader = DataLoader(
@@ -137,6 +138,7 @@ class NougatEngine(DocumentEngine):
 
         if output_format == OutputFormat.JSON:
             import json
+
             content = json.dumps(
                 {"pages": [{"page": i + 1, "text": t} for i, t in enumerate(pages_text)]},
                 ensure_ascii=False,

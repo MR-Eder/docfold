@@ -1,4 +1,4 @@
-﻿"""Tests for the EngineRouter."""
+"""Tests for the EngineRouter."""
 
 import os
 from unittest.mock import patch
@@ -11,6 +11,7 @@ from docfold.engines.router import EngineRouter
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 class FakeEngine(DocumentEngine):
     def __init__(self, name: str, extensions: set[str], available: bool = True):
@@ -39,17 +40,20 @@ class FakeEngine(DocumentEngine):
 
 @pytest.fixture
 def router():
-    return EngineRouter([
-        FakeEngine("docling", {"pdf", "docx", "png"}, available=True),
-        FakeEngine("mineru", {"pdf"}, available=True),
-        FakeEngine("marker", {"pdf", "docx"}, available=True),
-        FakeEngine("pymupdf", {"pdf"}, available=True),
-    ])
+    return EngineRouter(
+        [
+            FakeEngine("docling", {"pdf", "docx", "png"}, available=True),
+            FakeEngine("mineru", {"pdf"}, available=True),
+            FakeEngine("marker", {"pdf", "docx"}, available=True),
+            FakeEngine("pymupdf", {"pdf"}, available=True),
+        ]
+    )
 
 
 # ---------------------------------------------------------------------------
 # Tests
 # ---------------------------------------------------------------------------
+
 
 class TestSelect:
     def test_explicit_hint(self, router):
@@ -71,10 +75,12 @@ class TestSelect:
             assert engine.name == "marker"
 
     def test_env_default_skipped_if_unavailable(self):
-        r = EngineRouter([
-            FakeEngine("broken", {"pdf"}, available=False),
-            FakeEngine("fallback", {"pdf"}, available=True),
-        ])
+        r = EngineRouter(
+            [
+                FakeEngine("broken", {"pdf"}, available=False),
+                FakeEngine("fallback", {"pdf"}, available=True),
+            ]
+        )
         with patch.dict(os.environ, {"ENGINE_DEFAULT": "broken"}):
             engine = r.select("test.pdf")
             assert engine.name == "fallback"
@@ -125,28 +131,34 @@ class TestExtensionPriority:
 
     def test_docx_picks_docling_over_mineru(self):
         """MinerU is PDF-only; .docx should skip it."""
-        r = EngineRouter([
-            FakeEngine("mineru", {"pdf"}, available=True),
-            FakeEngine("docling", {"pdf", "docx"}, available=True),
-        ])
+        r = EngineRouter(
+            [
+                FakeEngine("mineru", {"pdf"}, available=True),
+                FakeEngine("docling", {"pdf", "docx"}, available=True),
+            ]
+        )
         engine = r.select("report.docx")
         assert engine.name == "docling"
 
     def test_png_prefers_paddleocr(self):
         """Image files should prefer OCR engines."""
-        r = EngineRouter([
-            FakeEngine("docling", {"pdf", "png"}, available=True),
-            FakeEngine("paddleocr", {"png", "jpg", "pdf"}, available=True),
-        ])
+        r = EngineRouter(
+            [
+                FakeEngine("docling", {"pdf", "png"}, available=True),
+                FakeEngine("paddleocr", {"png", "jpg", "pdf"}, available=True),
+            ]
+        )
         engine = r.select("scan.png")
         assert engine.name == "paddleocr"
 
     def test_pdf_prefers_docling(self):
         """PDFs should prefer docling (first in PDF priority)."""
-        r = EngineRouter([
-            FakeEngine("paddleocr", {"png", "pdf"}, available=True),
-            FakeEngine("docling", {"pdf", "docx"}, available=True),
-        ])
+        r = EngineRouter(
+            [
+                FakeEngine("paddleocr", {"png", "pdf"}, available=True),
+                FakeEngine("docling", {"pdf", "docx"}, available=True),
+            ]
+        )
         engine = r.select("document.pdf")
         assert engine.name == "docling"
 

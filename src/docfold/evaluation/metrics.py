@@ -18,6 +18,7 @@ def compute_cer(predicted: str, reference: str) -> float:
         return 0.0 if not predicted else float(len(predicted))
     try:
         from jiwer import cer
+
         result = cer(reference, predicted)
         return result if isinstance(result, float) else 0.0
     except ImportError:
@@ -33,6 +34,7 @@ def compute_wer(predicted: str, reference: str) -> float:
         return 0.0 if not predicted.strip() else float(len(predicted.split()))
     try:
         from jiwer import wer
+
         return wer(reference, predicted)
     except ImportError:
         return _levenshtein_ratio(predicted, reference, char_level=False)
@@ -115,6 +117,7 @@ def compute_reading_order_score(
 
     try:
         from scipy.stats import kendalltau
+
         tau, _ = kendalltau(ref_ranks, pred_ranks)
         return float(tau) if tau == tau else 0.0  # handle NaN
     except ImportError:
@@ -133,6 +136,7 @@ def compute_reading_order_score(
 # ---------------------------------------------------------------------------
 # Internal helpers
 # ---------------------------------------------------------------------------
+
 
 def _normalize(text: str) -> str:
     """Lowercase, strip whitespace, collapse spaces."""

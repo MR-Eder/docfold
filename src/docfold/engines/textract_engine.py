@@ -51,7 +51,9 @@ class TextractEngine(DocumentEngine):
     @property
     def capabilities(self) -> EngineCapabilities:
         return EngineCapabilities(
-            bounding_boxes=True, confidence=True, table_structure=True,
+            bounding_boxes=True,
+            confidence=True,
+            table_structure=True,
             reading_order=True,
         )
 
@@ -129,13 +131,15 @@ class TextractEngine(DocumentEngine):
 
                 bbox = block.get("Geometry", {}).get("BoundingBox", {})
                 if bbox:
-                    bounding_boxes.append({
-                        "type": "line",
-                        "text": text,
-                        "bbox": bbox,
-                        "page": block.get("Page", 1),
-                        "confidence": conf,
-                    })
+                    bounding_boxes.append(
+                        {
+                            "type": "line",
+                            "text": text,
+                            "bbox": bbox,
+                            "page": block.get("Page", 1),
+                            "confidence": conf,
+                        }
+                    )
 
             elif block_type == "TABLE":
                 table_data = self._extract_table(block, blocks)
@@ -147,6 +151,7 @@ class TextractEngine(DocumentEngine):
 
         if output_format == OutputFormat.JSON:
             import json
+
             data = [{"text": line} for line in lines]
             content = json.dumps(data, ensure_ascii=False)
         elif output_format == OutputFormat.HTML:
@@ -164,9 +169,7 @@ class TextractEngine(DocumentEngine):
 
         return content, metadata, bounding_boxes, avg_conf, tables or None
 
-    def _extract_table(
-        self, table_block: dict, all_blocks: list[dict]
-    ) -> dict[str, Any] | None:
+    def _extract_table(self, table_block: dict, all_blocks: list[dict]) -> dict[str, Any] | None:
         """Extract table structure from Textract CELL blocks."""
         relationships = table_block.get("Relationships", [])
         cell_ids: list[str] = []
@@ -192,8 +195,7 @@ class TextractEngine(DocumentEngine):
 
         return {
             "rows": [
-                {f"col_{c}": rows[r].get(c, "") for c in sorted(rows[r])}
-                for r in sorted(rows)
+                {f"col_{c}": rows[r].get(c, "") for c in sorted(rows[r])} for r in sorted(rows)
             ]
         }
 

@@ -1,0 +1,23 @@
+apiVersion: v2
+name: docfold
+description: A Helm chart for deploying docfold document processing API with GPU worker support
+type: application
+version: 0.1.0
+appVersion: "0.6.12"
+
+dependencies:
+  - name: redis
+    version: "~18.x"
+    repository: https://charts.bitnami.com/bitnami
+    condition: redis.enabled
+
+maintainers:
+  - name: docfold
+    url: https://github.com/mihailorama/docfold
+
+keywords:
+  - document-processing
+  - ocr
+  - pdf
+  - fastapi
+  - gpu

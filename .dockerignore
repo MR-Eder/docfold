@@ -1,0 +1,45 @@
+# Version control
+.git
+.github
+.gitignore
+
+# Python artifacts
+__pycache__
+*.pyc
+*.pyo
+*.egg-info
+dist/
+build/
+*.egg
+
+# Development
+.venv
+venv
+.env
+.env.*
+*.log
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+
+# Tests and docs
+tests/
+docs/
+*.md
+!README.md
+
+# Docker
+Dockerfile*
+docker-compose*
+.dockerignore
+
+# Claude / AI
+.claude/
+tasks/
+
+# OS files
+.DS_Store
+Thumbs.db

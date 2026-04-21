@@ -54,9 +54,7 @@ class FirecrawlEngine(DocumentEngine):
         **kwargs: Any,
     ) -> None:
         self._api_key = api_key or os.getenv("FIRECRAWL_API_KEY")
-        self._api_url = (
-            api_url or os.getenv("FIRECRAWL_API_URL") or "https://api.firecrawl.dev"
-        )
+        self._api_url = api_url or os.getenv("FIRECRAWL_API_URL") or "https://api.firecrawl.dev"
         self._timeout = timeout
         self._extra = kwargs
 
@@ -87,12 +85,29 @@ class FirecrawlEngine(DocumentEngine):
         """Process a document via the Firecrawl REST API.
 
         Supports PDF, DOCX, images, and HTML files.
+
+        Accepts ``provider_keys`` in kwargs for BYOK (Bring Your Own Key)
+        support.  If ``FIRECRAWL_API_KEY`` is present in the dict, it
+        overrides the environment-variable default for this request.
         """
         start = time.perf_counter()
 
+        # BYOK: prefer per-request key over env default
+        provider_keys: dict[str, str] = kwargs.get("provider_keys", {})
+        api_key = provider_keys.get("FIRECRAWL_API_KEY") or self._api_key
+        if not api_key:
+            raise RuntimeError(
+                "Firecrawl engine requires an API key. "
+                "Set FIRECRAWL_API_KEY in env or provide via frontend config."
+            )
+
         loop = asyncio.get_running_loop()
         content, metadata = await loop.run_in_executor(
-            None, self._call_api, file_path, output_format,
+            None,
+            self._call_api,
+            file_path,
+            output_format,
+            api_key,
         )
 
         elapsed_ms = int((time.perf_counter() - start) * 1000)
@@ -109,6 +124,7 @@ class FirecrawlEngine(DocumentEngine):
         self,
         file_path: str,
         output_format: OutputFormat,
+        api_key: str,
     ) -> tuple[str, dict[str, Any]]:
         ext = Path(file_path).suffix.lstrip(".").lower()
 
@@ -141,7 +157,7 @@ class FirecrawlEngine(DocumentEngine):
             url,
             data=payload,
             headers={
-                "Authorization": f"Bearer {self._api_key}",
+                "Authorization": f"Bearer {api_key}",
                 "Content-Type": "application/json",
             },
             method="POST",
@@ -157,6 +173,7 @@ class FirecrawlEngine(DocumentEngine):
         # For text output, strip markdown formatting
         if output_format == OutputFormat.TEXT:
             import re
+
             content = re.sub(r"[#*_`~\[\]]", "", content)
 
         return content, metadata

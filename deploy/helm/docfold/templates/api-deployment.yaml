@@ -1,0 +1,91 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "docfold.fullname" . }}-api
+  labels:
+    {{- include "docfold.labels" . | nindent 4 }}
+    app.kubernetes.io/component: api
+spec:
+  {{- if not .Values.api.autoscaling.enabled }}
+  replicas: {{ .Values.api.replicaCount }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "docfold.api.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "docfold.api.selectorLabels" . | nindent 8 }}
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: api
+          image: "{{ .Values.api.image.repository }}:{{ .Values.api.image.tag }}"
+          imagePullPolicy: {{ .Values.api.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: 8000
+              protocol: TCP
+          env:
+            {{- range $key, $value := .Values.api.env }}
+            - name: {{ $key }}
+              value: {{ $value | quote }}
+            {{- end }}
+            - name: DOCFOLD_REDIS_URL
+              value: {{ include "docfold.redisUrl" . | quote }}
+          envFrom:
+            - configMapRef:
+                name: {{ include "docfold.fullname" . }}-config
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 30
+            timeoutSeconds: 5
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: http
+            initialDelaySeconds: 15
+            periodSeconds: 10
+            timeoutSeconds: 5
+          resources:
+            {{- toYaml .Values.api.resources | nindent 12 }}
+          volumeMounts:
+            - name: uploads
+              mountPath: /data/uploads
+            - name: results
+              mountPath: /data/results
+      volumes:
+        {{- if .Values.storage.uploads.enabled }}
+        - name: uploads
+          persistentVolumeClaim:
+            claimName: {{ include "docfold.fullname" . }}-uploads
+        {{- else }}
+        - name: uploads
+          emptyDir: {}
+        {{- end }}
+        {{- if .Values.storage.results.enabled }}
+        - name: results
+          persistentVolumeClaim:
+            claimName: {{ include "docfold.fullname" . }}-results
+        {{- else }}
+        - name: results
+          emptyDir: {}
+        {{- end }}
+      {{- with .Values.api.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.api.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.api.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}

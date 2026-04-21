@@ -6,7 +6,10 @@ from docfold.preprocessing.detector import FileInfo, detect_file_type
 class TestFileInfo:
     def test_is_pdf(self):
         fi = FileInfo(
-            path="x.pdf", extension="pdf", category="document", mime_type="application/pdf",
+            path="x.pdf",
+            extension="pdf",
+            category="document",
+            mime_type="application/pdf",
         )
         assert fi.is_pdf
         assert not fi.is_image

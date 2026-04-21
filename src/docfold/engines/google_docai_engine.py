@@ -64,8 +64,11 @@ class GoogleDocAIEngine(DocumentEngine):
     @property
     def capabilities(self) -> EngineCapabilities:
         return EngineCapabilities(
-            bounding_boxes=True, confidence=True, table_structure=True,
-            heading_detection=True, reading_order=True,
+            bounding_boxes=True,
+            confidence=True,
+            table_structure=True,
+            heading_detection=True,
+            reading_order=True,
         )
 
     def is_available(self) -> bool:
@@ -113,9 +116,7 @@ class GoogleDocAIEngine(DocumentEngine):
 
         client = documentai.DocumentProcessorServiceClient()
 
-        processor_name = client.processor_path(
-            self._project_id, self._location, self._processor_id
-        )
+        processor_name = client.processor_path(self._project_id, self._location, self._processor_id)
 
         ext = os.path.splitext(file_path)[1].lstrip(".").lower()
         mime_type = _MIME_MAP.get(ext, "application/octet-stream")
@@ -145,13 +146,15 @@ class GoogleDocAIEngine(DocumentEngine):
 
                 vertices = self._get_vertices(paragraph.layout)
                 if vertices:
-                    bounding_boxes.append({
-                        "type": "paragraph",
-                        "text": text_segment,
-                        "vertices": vertices,
-                        "page": page_num,
-                        "confidence": conf,
-                    })
+                    bounding_boxes.append(
+                        {
+                            "type": "paragraph",
+                            "text": text_segment,
+                            "vertices": vertices,
+                            "page": page_num,
+                            "confidence": conf,
+                        }
+                    )
 
         avg_conf = sum(confidences) / len(confidences) if confidences else None
 
@@ -166,6 +169,7 @@ class GoogleDocAIEngine(DocumentEngine):
         # Format output
         if output_format == OutputFormat.JSON:
             import json
+
             data = {"text": full_text, "page_count": len(document.pages)}
             content = json.dumps(data, ensure_ascii=False)
         elif output_format == OutputFormat.HTML:

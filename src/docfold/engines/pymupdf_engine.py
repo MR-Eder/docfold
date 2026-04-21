@@ -43,6 +43,7 @@ class PyMuPDFEngine(DocumentEngine):
     def is_available(self) -> bool:
         try:
             import fitz  # noqa: F401
+
             return True
         except ImportError:
             return False
@@ -75,7 +76,9 @@ class PyMuPDFEngine(DocumentEngine):
         )
 
     def _extract(
-        self, file_path: str, output_format: OutputFormat,
+        self,
+        file_path: str,
+        output_format: OutputFormat,
     ) -> tuple[str, int, list[dict[str, Any]]]:
         import fitz
 
@@ -108,15 +111,17 @@ class PyMuPDFEngine(DocumentEngine):
                             for span in line.get("spans", []):
                                 spans_text.append(span.get("text", ""))
                         text = " ".join(spans_text)
-                    bboxes.append(BoundingBox(
-                        type=block_type,
-                        bbox=list(bbox_raw),
-                        page=page_num,
-                        text=text,
-                        id=f"p{page_num}-b{block_idx}",
-                        page_width=pw,
-                        page_height=ph,
-                    ).to_dict())
+                    bboxes.append(
+                        BoundingBox(
+                            type=block_type,
+                            bbox=list(bbox_raw),
+                            page=page_num,
+                            text=text,
+                            id=f"p{page_num}-b{block_idx}",
+                            page_width=pw,
+                            page_height=ph,
+                        ).to_dict()
+                    )
             except Exception as exc:
                 logger.debug("Failed to extract bboxes from page %d: %s", page_num, exc)
 
@@ -126,13 +131,16 @@ class PyMuPDFEngine(DocumentEngine):
 
         if output_format == OutputFormat.JSON:
             import json
+
             content = json.dumps(
                 {"pages": [{"page": i + 1, "text": t} for i, t in enumerate(pages_text)]},
                 ensure_ascii=False,
             )
         elif output_format == OutputFormat.HTML:
-            html_parts = [f"<div class='page' data-page='{i+1}'><p>{t}</p></div>"
-                          for i, t in enumerate(pages_text)]
+            html_parts = [
+                f"<div class='page' data-page='{i + 1}'><p>{t}</p></div>"
+                for i, t in enumerate(pages_text)
+            ]
             content = "<html><body>" + "\n".join(html_parts) + "</body></html>"
         else:
             content = full_text

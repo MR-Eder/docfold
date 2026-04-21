@@ -109,8 +109,7 @@ class MistralOCREngine(DocumentEngine):
             import json
 
             data = [
-                {"page": i + 1, "text": page.markdown}
-                for i, page in enumerate(ocr_response.pages)
+                {"page": i + 1, "text": page.markdown} for i, page in enumerate(ocr_response.pages)
             ]
             content = json.dumps(data, ensure_ascii=False)
         elif output_format == OutputFormat.HTML:

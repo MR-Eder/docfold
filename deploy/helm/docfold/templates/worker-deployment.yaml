@@ -1,0 +1,81 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "docfold.fullname" . }}-worker
+  labels:
+    {{- include "docfold.labels" . | nindent 4 }}
+    app.kubernetes.io/component: worker
+spec:
+  {{- if not .Values.worker.autoscaling.enabled }}
+  replicas: {{ .Values.worker.replicaCount }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "docfold.worker.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "docfold.worker.selectorLabels" . | nindent 8 }}
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: worker
+          {{- if .Values.worker.gpu.enabled }}
+          image: "{{ .Values.worker.gpu.image.repository }}:{{ .Values.worker.gpu.image.tag }}"
+          {{- else }}
+          image: "{{ .Values.worker.image.repository }}:{{ .Values.worker.image.tag }}"
+          {{- end }}
+          imagePullPolicy: {{ .Values.worker.image.pullPolicy }}
+          env:
+            {{- range $key, $value := .Values.worker.env }}
+            - name: {{ $key }}
+              value: {{ $value | quote }}
+            {{- end }}
+            - name: DOCFOLD_REDIS_URL
+              value: {{ include "docfold.redisUrl" . | quote }}
+          envFrom:
+            - configMapRef:
+                name: {{ include "docfold.fullname" . }}-config
+          resources:
+            {{- if .Values.worker.gpu.enabled }}
+            {{- toYaml .Values.worker.gpu.resources | nindent 12 }}
+            {{- else }}
+            {{- toYaml .Values.worker.resources | nindent 12 }}
+            {{- end }}
+          volumeMounts:
+            - name: uploads
+              mountPath: /data/uploads
+            - name: results
+              mountPath: /data/results
+      volumes:
+        {{- if .Values.storage.uploads.enabled }}
+        - name: uploads
+          persistentVolumeClaim:
+            claimName: {{ include "docfold.fullname" . }}-uploads
+        {{- else }}
+        - name: uploads
+          emptyDir: {}
+        {{- end }}
+        {{- if .Values.storage.results.enabled }}
+        - name: results
+          persistentVolumeClaim:
+            claimName: {{ include "docfold.fullname" . }}-results
+        {{- else }}
+        - name: results
+          emptyDir: {}
+        {{- end }}
+      {{- with .Values.worker.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.worker.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.worker.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}

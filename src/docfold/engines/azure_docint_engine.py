@@ -19,8 +19,17 @@ from docfold.engines.base import DocumentEngine, EngineCapabilities, EngineResul
 logger = logging.getLogger(__name__)
 
 _SUPPORTED_EXTENSIONS = {
-    "pdf", "png", "jpg", "jpeg", "tiff", "tif", "bmp",
-    "docx", "xlsx", "pptx", "html",
+    "pdf",
+    "png",
+    "jpg",
+    "jpeg",
+    "tiff",
+    "tif",
+    "bmp",
+    "docx",
+    "xlsx",
+    "pptx",
+    "html",
 }
 
 
@@ -56,8 +65,11 @@ class AzureDocIntEngine(DocumentEngine):
     @property
     def capabilities(self) -> EngineCapabilities:
         return EngineCapabilities(
-            bounding_boxes=True, confidence=True, table_structure=True,
-            heading_detection=True, reading_order=True,
+            bounding_boxes=True,
+            confidence=True,
+            table_structure=True,
+            heading_detection=True,
+            reading_order=True,
         )
 
     def is_available(self) -> bool:
@@ -139,14 +151,16 @@ class AzureDocIntEngine(DocumentEngine):
             else:
                 page_num = 1
 
-            bounding_boxes.append({
-                "type": "paragraph",
-                "role": paragraph.role,
-                "text": paragraph.content,
-                "polygon": polygon,
-                "page": page_num,
-                "confidence": conf,
-            })
+            bounding_boxes.append(
+                {
+                    "type": "paragraph",
+                    "role": paragraph.role,
+                    "text": paragraph.content,
+                    "polygon": polygon,
+                    "page": page_num,
+                    "confidence": conf,
+                }
+            )
 
         avg_conf = sum(confidences) / len(confidences) if confidences else None
 
@@ -160,6 +174,7 @@ class AzureDocIntEngine(DocumentEngine):
         # Format output
         if output_format == OutputFormat.JSON:
             import json
+
             data = {"text": full_text, "page_count": len(result.pages or [])}
             content = json.dumps(data, ensure_ascii=False)
         elif output_format == OutputFormat.HTML:
@@ -191,7 +206,6 @@ class AzureDocIntEngine(DocumentEngine):
             "row_count": table.row_count,
             "column_count": table.column_count,
             "rows": [
-                {f"col_{c}": rows[r].get(c, "") for c in sorted(rows[r])}
-                for r in sorted(rows)
+                {f"col_{c}": rows[r].get(c, "") for c in sorted(rows[r])} for r in sorted(rows)
             ],
         }

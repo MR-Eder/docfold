@@ -44,6 +44,77 @@ class TestUploadStorage:
         assert deleted is False
 
 
+class TestPathTraversalDefense:
+    """H3 regression — caller-supplied filenames are sanitised and
+    contained within the upload root. Previously ``../../etc/passwd``
+    could flow through :meth:`save_upload` unchecked."""
+
+    @pytest.mark.asyncio
+    async def test_save_strips_directory_traversal(
+        self, storage: StorageService, tmp_path: Path
+    ):
+        # A name like ``../../etc/passwd`` must not escape the upload
+        # root. Basename strips the prefix; the containment check is
+        # the safety net in case a future refactor regresses that.
+        path = await storage.save_upload("../../etc/passwd", b"pwned")
+        resolved = Path(path).resolve()
+        assert resolved.is_relative_to((tmp_path / "uploads").resolve()), (
+            f"upload escaped root: {resolved}"
+        )
+        assert resolved.name.endswith("_passwd"), (
+            f"sanitiser should have reduced the name to basename+clean: {resolved.name}"
+        )
+
+    @pytest.mark.asyncio
+    async def test_save_strips_unsafe_characters(self, storage: StorageService):
+        path = await storage.save_upload("file with spaces & $pecial.pdf", b"x")
+        name = Path(path).name
+        # Spaces, ampersand, dollar sign all collapse to "_".
+        assert "&" not in name and " " not in name and "$" not in name
+        assert name.endswith(".pdf")
+
+    @pytest.mark.asyncio
+    async def test_save_rejects_leading_dot(self, storage: StorageService):
+        # Dotfiles would otherwise let an attacker drop an ``.env`` into
+        # the upload root.
+        path = await storage.save_upload(".env", b"OPENAI_API_KEY=stolen")
+        name = Path(path).name
+        assert not name.split("_", 1)[1].startswith("."), (
+            f"leading dot should be stripped: {name}"
+        )
+
+    @pytest.mark.asyncio
+    async def test_save_falls_back_on_empty_sanitised_name(
+        self, storage: StorageService
+    ):
+        # An input that's entirely separators / dots sanitises to the
+        # empty string; we fall back to ``"upload"`` so the write still
+        # lands at a valid, contained path.
+        path = await storage.save_upload("../../", b"x")
+        assert Path(path).name.endswith("_upload")
+        assert Path(path).exists()
+
+    @pytest.mark.asyncio
+    async def test_get_upload_refuses_traversal(self, storage: StorageService):
+        # ``../../etc/passwd`` must return None, not a file from outside
+        # the upload root.
+        result = await storage.get_upload("../../etc/passwd")
+        assert result is None
+
+    @pytest.mark.asyncio
+    async def test_delete_refuses_path_outside_root(
+        self, storage: StorageService, tmp_path: Path
+    ):
+        # Create a file *outside* the upload root and try to delete it
+        # via the public API.
+        outside = tmp_path / "secrets.txt"
+        outside.write_text("sensitive")
+
+        ok = await storage.delete_upload(str(outside))
+        assert ok is False, "delete_upload should refuse out-of-root paths"
+        assert outside.exists(), "the target file must survive the refusal"
+
+
 class TestResultStorage:
     """Tests for result file operations."""
 

@@ -2,12 +2,16 @@
 
 from __future__ import annotations
 
-import uuid
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, Request
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from pipeline_common.middleware import TenantMiddleware, parse_tenants
+from pipeline_common.middleware import (
+    TenantMiddleware,
+    add_request_id_middleware,
+    parse_cors_origins,
+    parse_tenants,
+)
 
 from docfold.api.core.auth import APIKeyMiddleware
 from docfold.api.core.config import get_settings
@@ -53,19 +57,19 @@ def create_app() -> FastAPI:
         lifespan=lifespan,
     )
 
-    # --- Request ID middleware ---
-    @app.middleware("http")
-    async def add_request_id(request: Request, call_next):  # noqa: ANN001
-        request_id = request.headers.get("X-Request-ID", str(uuid.uuid4()))
-        response = await call_next(request)
-        response.headers["X-Request-ID"] = request_id
-        return response
+    # --- Request ID middleware (shared impl) ---
+    add_request_id_middleware(app)
 
     # --- CORS ---
+    # M2 fix: ``allow_origins=["*"]`` with ``allow_credentials=True`` is
+    # spec-violating — browsers reject the combo. ``parse_cors_origins``
+    # forces credentials off when the wildcard is present and leaves
+    # them on for an explicit origin list.
+    cors_origins, allow_credentials = parse_cors_origins(settings.cors_origins)
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=[o.strip() for o in settings.cors_origins.split(",") if o.strip()],
-        allow_credentials=True,
+        allow_origins=cors_origins,
+        allow_credentials=allow_credentials,
         allow_methods=["*"],
         allow_headers=["*"],
     )

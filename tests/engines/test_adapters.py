@@ -10,11 +10,13 @@ from docfold.engines.base import EngineCapabilities
 class TestDoclingEngine:
     def test_name(self):
         from docfold.engines.docling_engine import DoclingEngine
+
         e = DoclingEngine()
         assert e.name == "docling"
 
     def test_supported_extensions(self):
         from docfold.engines.docling_engine import DoclingEngine
+
         e = DoclingEngine()
         exts = e.supported_extensions
         assert "pdf" in exts
@@ -27,6 +29,7 @@ class TestDoclingEngine:
 
     def test_is_available_when_missing(self):
         from docfold.engines.docling_engine import DoclingEngine
+
         e = DoclingEngine()
         with patch.dict("sys.modules", {"docling": None}):
             # Even with mock, the import check may vary
@@ -36,6 +39,7 @@ class TestDoclingEngine:
 
     def test_config_stored(self):
         from docfold.engines.docling_engine import DoclingEngine
+
         e = DoclingEngine(pipeline="vlm", ocr_enabled=False)
         assert e._pipeline == "vlm"
         assert e._ocr_enabled is False
@@ -44,16 +48,19 @@ class TestDoclingEngine:
 class TestMinerUEngine:
     def test_name(self):
         from docfold.engines.mineru_engine import MinerUEngine
+
         e = MinerUEngine()
         assert e.name == "mineru"
 
     def test_supported_extensions(self):
         from docfold.engines.mineru_engine import MinerUEngine
+
         e = MinerUEngine()
         assert e.supported_extensions == {"pdf"}
 
     def test_is_available_when_missing(self):
         from docfold.engines.mineru_engine import MinerUEngine
+
         e = MinerUEngine()
         with patch.dict("sys.modules", {"magic_pdf": None}):
             result = e.is_available()
@@ -61,6 +68,7 @@ class TestMinerUEngine:
 
     def test_config_stored(self):
         from docfold.engines.mineru_engine import MinerUEngine
+
         e = MinerUEngine(config_path="/tmp/cfg.yaml", gpu=True)
         assert e._config_path == "/tmp/cfg.yaml"
         assert e._gpu is True
@@ -69,11 +77,13 @@ class TestMinerUEngine:
 class TestMarkerEngine:
     def test_name(self):
         from docfold.engines.marker_engine import MarkerEngine
+
         e = MarkerEngine()
         assert e.name == "marker"
 
     def test_supported_extensions(self):
         from docfold.engines.marker_engine import MarkerEngine
+
         e = MarkerEngine()
         exts = e.supported_extensions
         assert "pdf" in exts
@@ -82,6 +92,7 @@ class TestMarkerEngine:
 
     def test_is_available_without_key(self):
         from docfold.engines.marker_engine import MarkerEngine
+
         with patch.dict("os.environ", {}, clear=True):
             e = MarkerEngine(api_key=None)
             # No API key → not available (even if requests is installed)
@@ -92,12 +103,14 @@ class TestMarkerEngine:
         from unittest.mock import patch
 
         from docfold.engines.marker_engine import MarkerEngine
+
         e = MarkerEngine(api_key="test-key-123")
         with patch.dict("sys.modules", {"requests": types.ModuleType("requests")}):
             assert e.is_available() is True
 
     def test_config_stored(self):
         from docfold.engines.marker_engine import MarkerEngine
+
         e = MarkerEngine(api_key="k", mode="fast", paginate=True)
         assert e._api_key == "k"
         assert e._defaults["mode"] == "fast"
@@ -107,16 +120,19 @@ class TestMarkerEngine:
 class TestPyMuPDFEngine:
     def test_name(self):
         from docfold.engines.pymupdf_engine import PyMuPDFEngine
+
         e = PyMuPDFEngine()
         assert e.name == "pymupdf"
 
     def test_supported_extensions(self):
         from docfold.engines.pymupdf_engine import PyMuPDFEngine
+
         e = PyMuPDFEngine()
         assert e.supported_extensions == {"pdf"}
 
     def test_is_available_when_missing(self):
         from docfold.engines.pymupdf_engine import PyMuPDFEngine
+
         e = PyMuPDFEngine()
         with patch.dict("sys.modules", {"fitz": None}):
             result = e.is_available()
@@ -124,6 +140,7 @@ class TestPyMuPDFEngine:
 
     def test_capabilities_declare_bounding_boxes(self):
         from docfold.engines.pymupdf_engine import PyMuPDFEngine
+
         e = PyMuPDFEngine()
         assert e.capabilities.bounding_boxes is True
 
@@ -191,12 +208,8 @@ class TestPyMuPDFEngine:
 
         for bbox in result.bounding_boxes:
             # page_width and page_height MUST be present
-            assert "page_width" in bbox, (
-                f"Missing page_width in bbox {bbox['id']}"
-            )
-            assert "page_height" in bbox, (
-                f"Missing page_height in bbox {bbox['id']}"
-            )
+            assert "page_width" in bbox, f"Missing page_width in bbox {bbox['id']}"
+            assert "page_height" in bbox, f"Missing page_height in bbox {bbox['id']}"
             assert bbox["page_width"] == pytest.approx(612.0, abs=1)
             assert bbox["page_height"] == pytest.approx(792.0, abs=1)
 
@@ -243,19 +256,19 @@ class TestPyMuPDFEngine:
             assert 0 < nw <= 1, f"Normalized width={nw} out of range"
             assert 0 < nh <= 1, f"Normalized height={nh} out of range"
             # No single block should cover > 95% of page
-            assert nw < 0.95 or nh < 0.95, (
-                f"Block covers entire page: w={nw:.2f} h={nh:.2f}"
-            )
+            assert nw < 0.95 or nh < 0.95, f"Block covers entire page: w={nw:.2f} h={nh:.2f}"
 
 
 class TestPaddleOCREngine:
     def test_name(self):
         from docfold.engines.paddleocr_engine import PaddleOCREngine
+
         e = PaddleOCREngine()
         assert e.name == "paddleocr"
 
     def test_supported_extensions(self):
         from docfold.engines.paddleocr_engine import PaddleOCREngine
+
         e = PaddleOCREngine()
         exts = e.supported_extensions
         assert "png" in exts
@@ -265,11 +278,13 @@ class TestPaddleOCREngine:
 
     def test_config_stored(self):
         from docfold.engines.paddleocr_engine import PaddleOCREngine
+
         e = PaddleOCREngine(lang="ru")
         assert e._lang == "ru"
 
     def test_is_available_returns_bool(self):
         from docfold.engines.paddleocr_engine import PaddleOCREngine
+
         e = PaddleOCREngine()
         assert isinstance(e.is_available(), bool)
 
@@ -277,11 +292,13 @@ class TestPaddleOCREngine:
 class TestTesseractEngine:
     def test_name(self):
         from docfold.engines.tesseract_engine import TesseractEngine
+
         e = TesseractEngine()
         assert e.name == "tesseract"
 
     def test_supported_extensions(self):
         from docfold.engines.tesseract_engine import TesseractEngine
+
         e = TesseractEngine()
         exts = e.supported_extensions
         assert "png" in exts
@@ -291,11 +308,13 @@ class TestTesseractEngine:
 
     def test_config_stored(self):
         from docfold.engines.tesseract_engine import TesseractEngine
+
         e = TesseractEngine(lang="rus")
         assert e._lang == "rus"
 
     def test_is_available_returns_bool(self):
         from docfold.engines.tesseract_engine import TesseractEngine
+
         e = TesseractEngine()
         assert isinstance(e.is_available(), bool)
 
@@ -303,11 +322,13 @@ class TestTesseractEngine:
 class TestEasyOCREngine:
     def test_name(self):
         from docfold.engines.easyocr_engine import EasyOCREngine
+
         e = EasyOCREngine()
         assert e.name == "easyocr"
 
     def test_supported_extensions(self):
         from docfold.engines.easyocr_engine import EasyOCREngine
+
         e = EasyOCREngine()
         exts = e.supported_extensions
         assert "png" in exts
@@ -317,23 +338,27 @@ class TestEasyOCREngine:
 
     def test_config_stored(self):
         from docfold.engines.easyocr_engine import EasyOCREngine
+
         e = EasyOCREngine(lang=["ru", "en"], gpu=False)
         assert e._lang == ["ru", "en"]
         assert e._gpu is False
 
     def test_config_defaults(self):
         from docfold.engines.easyocr_engine import EasyOCREngine
+
         e = EasyOCREngine()
         assert e._lang == ["en"]
         assert e._gpu is True
 
     def test_is_available_returns_bool(self):
         from docfold.engines.easyocr_engine import EasyOCREngine
+
         e = EasyOCREngine()
         assert isinstance(e.is_available(), bool)
 
     def test_capabilities(self):
         from docfold.engines.easyocr_engine import EasyOCREngine
+
         e = EasyOCREngine()
         caps = e.capabilities
         assert caps.confidence is True
@@ -342,11 +367,13 @@ class TestEasyOCREngine:
 class TestUnstructuredEngine:
     def test_name(self):
         from docfold.engines.unstructured_engine import UnstructuredEngine
+
         e = UnstructuredEngine()
         assert e.name == "unstructured"
 
     def test_supported_extensions(self):
         from docfold.engines.unstructured_engine import UnstructuredEngine
+
         e = UnstructuredEngine()
         exts = e.supported_extensions
         assert "pdf" in exts
@@ -357,11 +384,13 @@ class TestUnstructuredEngine:
 
     def test_config_stored(self):
         from docfold.engines.unstructured_engine import UnstructuredEngine
+
         e = UnstructuredEngine(strategy="hi_res")
         assert e._strategy == "hi_res"
 
     def test_is_available_returns_bool(self):
         from docfold.engines.unstructured_engine import UnstructuredEngine
+
         e = UnstructuredEngine()
         assert isinstance(e.is_available(), bool)
 
@@ -369,11 +398,13 @@ class TestUnstructuredEngine:
 class TestLlamaParseEngine:
     def test_name(self):
         from docfold.engines.llamaparse_engine import LlamaParseEngine
+
         e = LlamaParseEngine()
         assert e.name == "llamaparse"
 
     def test_supported_extensions(self):
         from docfold.engines.llamaparse_engine import LlamaParseEngine
+
         e = LlamaParseEngine()
         exts = e.supported_extensions
         assert "pdf" in exts
@@ -382,6 +413,7 @@ class TestLlamaParseEngine:
 
     def test_is_available_without_key(self):
         from docfold.engines.llamaparse_engine import LlamaParseEngine
+
         e = LlamaParseEngine(api_key=None)
         # Without an API key, even if the library is installed, should not be available
         # (or if library is missing, also not available)
@@ -389,6 +421,7 @@ class TestLlamaParseEngine:
 
     def test_config_stored(self):
         from docfold.engines.llamaparse_engine import LlamaParseEngine
+
         e = LlamaParseEngine(api_key="test-key", result_type="html")
         assert e._api_key == "test-key"
         assert e._result_type == "html"
@@ -397,11 +430,13 @@ class TestLlamaParseEngine:
 class TestMistralOCREngine:
     def test_name(self):
         from docfold.engines.mistral_ocr_engine import MistralOCREngine
+
         e = MistralOCREngine()
         assert e.name == "mistral_ocr"
 
     def test_supported_extensions(self):
         from docfold.engines.mistral_ocr_engine import MistralOCREngine
+
         e = MistralOCREngine()
         exts = e.supported_extensions
         assert "pdf" in exts
@@ -410,24 +445,247 @@ class TestMistralOCREngine:
 
     def test_is_available_without_key(self):
         from docfold.engines.mistral_ocr_engine import MistralOCREngine
+
         e = MistralOCREngine(api_key=None)
         assert e.is_available() is False
 
     def test_config_stored(self):
         from docfold.engines.mistral_ocr_engine import MistralOCREngine
+
         e = MistralOCREngine(api_key="mk", model="pixtral-large")
         assert e._api_key == "mk"
         assert e._model == "pixtral-large"
 
 
+class TestGLMOCREngine:
+    def test_name(self):
+        from docfold.engines.glm_ocr_engine import GLMOCREngine
+
+        e = GLMOCREngine()
+        assert e.name == "glm_ocr"
+
+    def test_supported_extensions(self):
+        from docfold.engines.glm_ocr_engine import GLMOCREngine
+
+        e = GLMOCREngine()
+        exts = e.supported_extensions
+        assert "pdf" in exts
+        assert "png" in exts
+        assert "jpg" in exts
+        assert "jpeg" in exts
+
+    def test_is_available_without_key(self):
+        from docfold.engines.glm_ocr_engine import GLMOCREngine
+
+        with patch.dict("os.environ", {}, clear=True):
+            e = GLMOCREngine(api_key=None)
+            e._sdk_available = False
+            assert e.is_available() is False
+
+    def test_is_available_with_key(self):
+        from docfold.engines.glm_ocr_engine import GLMOCREngine
+
+        e = GLMOCREngine(api_key="test-key-123")
+        assert e.is_available() is True
+
+    def test_is_available_selfhosted_with_sdk(self):
+        """Selfhosted mode with SDK should be available even without API key."""
+        from docfold.engines.glm_ocr_engine import GLMOCREngine
+
+        with patch.dict("os.environ", {}, clear=True):
+            e = GLMOCREngine(api_key=None, mode="selfhosted")
+            e._sdk_available = True
+            assert e.is_available() is True
+
+    def test_config_stored(self):
+        from docfold.engines.glm_ocr_engine import GLMOCREngine
+
+        e = GLMOCREngine(
+            api_key="gk",
+            base_url="https://custom.api.example.com/v4",
+            model="glm-ocr-v2",
+        )
+        assert e._api_key == "gk"
+        assert e._base_url == "https://custom.api.example.com/v4"
+        assert e._model == "glm-ocr-v2"
+
+    def test_mode_config_stored(self):
+        from docfold.engines.glm_ocr_engine import GLMOCREngine
+
+        e = GLMOCREngine(
+            api_key="k",
+            mode="selfhosted",
+            ocr_api_host="gpu-server",
+            ocr_api_port=8080,
+        )
+        assert e._mode == "selfhosted"
+        assert e._ocr_api_host == "gpu-server"
+        assert e._ocr_api_port == 8080
+
+    def test_capabilities(self):
+        from docfold.engines.glm_ocr_engine import GLMOCREngine
+
+        caps = GLMOCREngine().capabilities
+        assert caps.bounding_boxes is True
+        assert caps.table_structure is True
+        assert caps.heading_detection is True
+        assert caps.confidence is False
+        assert caps.images is False
+
+    def test_default_base_url(self):
+        from docfold.engines.glm_ocr_engine import GLMOCREngine
+
+        with patch.dict("os.environ", {}, clear=True):
+            e = GLMOCREngine(api_key="k")
+            assert "api.z.ai" in e._base_url
+
+    @pytest.mark.asyncio
+    async def test_process_http_mocked(self):
+        """GLM-OCR HTTP fallback parses API response into EngineResult."""
+        import json
+        import tempfile
+        from unittest.mock import MagicMock
+
+        from docfold.engines.base import OutputFormat
+        from docfold.engines.glm_ocr_engine import GLMOCREngine
+
+        mock_response_data = {
+            "id": "task_123",
+            "created": 1700000000,
+            "model": "glm-ocr",
+            "md_results": "# Test Document\n\nHello world",
+            "layout_details": [
+                [
+                    {
+                        "index": 0,
+                        "label": "text",
+                        "native_label": "paragraph_title",
+                        "bbox_2d": [10, 20, 100, 50],
+                        "content": "Test Document",
+                        "width": 600,
+                        "height": 800,
+                    },
+                    {
+                        "index": 1,
+                        "label": "text",
+                        "native_label": "text",
+                        "bbox_2d": [10, 60, 100, 80],
+                        "content": "Hello world",
+                        "width": 600,
+                        "height": 800,
+                    },
+                ]
+            ],
+            "data_info": {"num_pages": 1, "pages": [{"width": 600, "height": 800}]},
+            "usage": {"prompt_tokens": 100, "completion_tokens": 50, "total_tokens": 150},
+            "request_id": "req_123",
+        }
+
+        mock_resp = MagicMock()
+        mock_resp.read.return_value = json.dumps(mock_response_data).encode()
+
+        e = GLMOCREngine(api_key="test-key")
+        e._sdk_available = False  # Force HTTP path
+
+        with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as f:
+            f.write(b"\x89PNG fake image data")
+            tmp_path = f.name
+
+        try:
+            with patch("urllib.request.urlopen", return_value=mock_resp):
+                result = await e.process(tmp_path, output_format=OutputFormat.MARKDOWN)
+
+                assert result.engine_name == "glm_ocr"
+                assert result.format == OutputFormat.MARKDOWN
+                assert "Test Document" in result.content
+                assert result.pages == 1
+                assert result.bounding_boxes is not None
+                assert len(result.bounding_boxes) == 2
+                assert result.bounding_boxes[0]["type"] == "SectionHeader"
+                assert result.bounding_boxes[1]["type"] == "Text"
+                assert result.metadata["mode"] == "http"
+                assert result.processing_time_ms > 0
+        finally:
+            import os
+
+            os.unlink(tmp_path)
+
+    @pytest.mark.asyncio
+    async def test_process_sdk_mocked(self):
+        """GLM-OCR SDK path converts PipelineResult to EngineResult."""
+        import tempfile
+        from unittest.mock import MagicMock
+
+        from docfold.engines.base import OutputFormat
+        from docfold.engines.glm_ocr_engine import GLMOCREngine
+
+        # Mock PipelineResult
+        mock_result = MagicMock()
+        mock_result.markdown_result = "# SDK Document\n\nParsed via SDK"
+        mock_result.json_result = [
+            [
+                {
+                    "index": 0,
+                    "label": "paragraph_title",
+                    "content": "SDK Document",
+                    "bbox_2d": [17, 25, 167, 63],  # normalised 0-1000
+                },
+                {
+                    "index": 1,
+                    "label": "text",
+                    "content": "Parsed via SDK",
+                    "bbox_2d": [17, 75, 167, 100],
+                },
+            ]
+        ]
+        mock_result._data_info = {"num_pages": 1, "pages": [{"width": 600, "height": 800}]}
+        mock_result._usage = {"prompt_tokens": 80, "completion_tokens": 40, "total_tokens": 120}
+
+        # Mock GlmOcr context manager and inject into a fake glmocr module
+        mock_parser = MagicMock()
+        mock_parser.__enter__ = MagicMock(return_value=mock_parser)
+        mock_parser.__exit__ = MagicMock(return_value=False)
+        mock_parser.parse.return_value = mock_result
+
+        mock_glmocr_module = MagicMock()
+        mock_glmocr_module.GlmOcr = MagicMock(return_value=mock_parser)
+
+        e = GLMOCREngine(api_key="sdk-key")
+        e._sdk_available = True  # Force SDK path
+
+        with tempfile.NamedTemporaryFile(suffix=".pdf", delete=False) as f:
+            f.write(b"%PDF-1.4 fake pdf data")
+            tmp_path = f.name
+
+        try:
+            import sys
+
+            with patch.dict(sys.modules, {"glmocr": mock_glmocr_module}):
+                result = await e.process(tmp_path, output_format=OutputFormat.MARKDOWN)
+
+                assert result.engine_name == "glm_ocr"
+                assert "SDK Document" in result.content
+                assert result.pages == 1
+                assert result.bounding_boxes is not None
+                assert len(result.bounding_boxes) == 2
+                assert result.metadata["sdk_version"] is True
+                assert result.processing_time_ms >= 0
+        finally:
+            import os
+
+            os.unlink(tmp_path)
+
+
 class TestZeroxEngine:
     def test_name(self):
         from docfold.engines.zerox_engine import ZeroxEngine
+
         e = ZeroxEngine()
         assert e.name == "zerox"
 
     def test_supported_extensions(self):
         from docfold.engines.zerox_engine import ZeroxEngine
+
         e = ZeroxEngine()
         exts = e.supported_extensions
         assert "pdf" in exts
@@ -435,12 +693,14 @@ class TestZeroxEngine:
 
     def test_config_stored(self):
         from docfold.engines.zerox_engine import ZeroxEngine
+
         e = ZeroxEngine(model="claude-3-opus", provider="anthropic")
         assert e._model == "claude-3-opus"
         assert e._provider == "anthropic"
 
     def test_is_available_returns_bool(self):
         from docfold.engines.zerox_engine import ZeroxEngine
+
         e = ZeroxEngine()
         assert isinstance(e.is_available(), bool)
 
@@ -448,11 +708,13 @@ class TestZeroxEngine:
 class TestTextractEngine:
     def test_name(self):
         from docfold.engines.textract_engine import TextractEngine
+
         e = TextractEngine()
         assert e.name == "textract"
 
     def test_supported_extensions(self):
         from docfold.engines.textract_engine import TextractEngine
+
         e = TextractEngine()
         exts = e.supported_extensions
         assert "pdf" in exts
@@ -461,11 +723,13 @@ class TestTextractEngine:
 
     def test_config_stored(self):
         from docfold.engines.textract_engine import TextractEngine
+
         e = TextractEngine(region_name="eu-west-1")
         assert e._region_name == "eu-west-1"
 
     def test_capabilities(self):
         from docfold.engines.textract_engine import TextractEngine
+
         e = TextractEngine()
         caps = e.capabilities
         assert caps.bounding_boxes is True
@@ -475,6 +739,7 @@ class TestTextractEngine:
 
     def test_is_available_returns_bool(self):
         from docfold.engines.textract_engine import TextractEngine
+
         e = TextractEngine()
         assert isinstance(e.is_available(), bool)
 
@@ -482,11 +747,13 @@ class TestTextractEngine:
 class TestGoogleDocAIEngine:
     def test_name(self):
         from docfold.engines.google_docai_engine import GoogleDocAIEngine
+
         e = GoogleDocAIEngine()
         assert e.name == "google_docai"
 
     def test_supported_extensions(self):
         from docfold.engines.google_docai_engine import GoogleDocAIEngine
+
         e = GoogleDocAIEngine()
         exts = e.supported_extensions
         assert "pdf" in exts
@@ -495,12 +762,14 @@ class TestGoogleDocAIEngine:
 
     def test_is_available_without_config(self):
         from docfold.engines.google_docai_engine import GoogleDocAIEngine
+
         e = GoogleDocAIEngine(project_id=None, processor_id=None)
         # Without project_id and processor_id → not available
         assert e.is_available() is False
 
     def test_config_stored(self):
         from docfold.engines.google_docai_engine import GoogleDocAIEngine
+
         e = GoogleDocAIEngine(project_id="proj", location="eu", processor_id="abc")
         assert e._project_id == "proj"
         assert e._location == "eu"
@@ -508,6 +777,7 @@ class TestGoogleDocAIEngine:
 
     def test_capabilities(self):
         from docfold.engines.google_docai_engine import GoogleDocAIEngine
+
         e = GoogleDocAIEngine()
         caps = e.capabilities
         assert caps.bounding_boxes is True
@@ -518,11 +788,13 @@ class TestGoogleDocAIEngine:
 class TestAzureDocIntEngine:
     def test_name(self):
         from docfold.engines.azure_docint_engine import AzureDocIntEngine
+
         e = AzureDocIntEngine()
         assert e.name == "azure_docint"
 
     def test_supported_extensions(self):
         from docfold.engines.azure_docint_engine import AzureDocIntEngine
+
         e = AzureDocIntEngine()
         exts = e.supported_extensions
         assert "pdf" in exts
@@ -533,11 +805,13 @@ class TestAzureDocIntEngine:
 
     def test_is_available_without_credentials(self):
         from docfold.engines.azure_docint_engine import AzureDocIntEngine
+
         e = AzureDocIntEngine(endpoint=None, key=None)
         assert e.is_available() is False
 
     def test_config_stored(self):
         from docfold.engines.azure_docint_engine import AzureDocIntEngine
+
         e = AzureDocIntEngine(
             endpoint="https://example.cognitiveservices.azure.com/",
             key="test-key",
@@ -549,6 +823,7 @@ class TestAzureDocIntEngine:
 
     def test_capabilities(self):
         from docfold.engines.azure_docint_engine import AzureDocIntEngine
+
         e = AzureDocIntEngine()
         caps = e.capabilities
         assert caps.bounding_boxes is True
@@ -561,16 +836,19 @@ class TestAzureDocIntEngine:
 class TestNougatEngine:
     def test_name(self):
         from docfold.engines.nougat_engine import NougatEngine
+
         e = NougatEngine()
         assert e.name == "nougat"
 
     def test_supported_extensions(self):
         from docfold.engines.nougat_engine import NougatEngine
+
         e = NougatEngine()
         assert e.supported_extensions == {"pdf"}
 
     def test_is_available_when_missing(self):
         from docfold.engines.nougat_engine import NougatEngine
+
         e = NougatEngine()
         with patch.dict("sys.modules", {"nougat": None}):
             result = e.is_available()
@@ -578,6 +856,7 @@ class TestNougatEngine:
 
     def test_config_stored(self):
         from docfold.engines.nougat_engine import NougatEngine
+
         e = NougatEngine(model="facebook/nougat-base", batch_size=4, no_skipping=True)
         assert e._model == "facebook/nougat-base"
         assert e._batch_size == 4
@@ -585,6 +864,7 @@ class TestNougatEngine:
 
     def test_capabilities(self):
         from docfold.engines.nougat_engine import NougatEngine
+
         caps = NougatEngine().capabilities
         assert caps.table_structure is True
         assert caps.heading_detection is True
@@ -596,11 +876,13 @@ class TestNougatEngine:
 class TestSuryaEngine:
     def test_name(self):
         from docfold.engines.surya_engine import SuryaEngine
+
         e = SuryaEngine()
         assert e.name == "surya"
 
     def test_supported_extensions(self):
         from docfold.engines.surya_engine import SuryaEngine
+
         e = SuryaEngine()
         exts = e.supported_extensions
         assert "pdf" in exts
@@ -612,6 +894,7 @@ class TestSuryaEngine:
 
     def test_is_available_when_missing(self):
         from docfold.engines.surya_engine import SuryaEngine
+
         e = SuryaEngine()
         with patch.dict("sys.modules", {"surya": None}):
             result = e.is_available()
@@ -619,11 +902,13 @@ class TestSuryaEngine:
 
     def test_config_stored(self):
         from docfold.engines.surya_engine import SuryaEngine
+
         e = SuryaEngine(langs=["en", "ru"])
         assert e._langs == ["en", "ru"]
 
     def test_capabilities(self):
         from docfold.engines.surya_engine import SuryaEngine
+
         caps = SuryaEngine().capabilities
         assert caps.bounding_boxes is True
         assert caps.confidence is True
@@ -638,6 +923,7 @@ class TestEngineCapabilities:
 
     def test_docling_capabilities(self):
         from docfold.engines.docling_engine import DoclingEngine
+
         caps = DoclingEngine().capabilities
         assert caps.bounding_boxes is True
         assert caps.images is True
@@ -647,6 +933,7 @@ class TestEngineCapabilities:
 
     def test_marker_capabilities(self):
         from docfold.engines.marker_engine import MarkerEngine
+
         caps = MarkerEngine(api_key="k").capabilities
         assert caps.bounding_boxes is True
         assert caps.images is True
@@ -655,12 +942,14 @@ class TestEngineCapabilities:
 
     def test_paddleocr_capabilities(self):
         from docfold.engines.paddleocr_engine import PaddleOCREngine
+
         caps = PaddleOCREngine().capabilities
         assert caps.confidence is True
         assert caps.bounding_boxes is False
 
     def test_pymupdf_default_capabilities(self):
         from docfold.engines.pymupdf_engine import PyMuPDFEngine
+
         caps = PyMuPDFEngine().capabilities
         assert caps.bounding_boxes is True
         assert caps.confidence is False
@@ -671,6 +960,7 @@ class TestEngineCapabilities:
         from docfold.engines.docling_engine import DoclingEngine
         from docfold.engines.pymupdf_engine import PyMuPDFEngine
         from docfold.engines.tesseract_engine import TesseractEngine
+
         for cls in [DoclingEngine, PyMuPDFEngine, TesseractEngine]:
             caps = cls().capabilities
             assert isinstance(caps, EngineCapabilities)
@@ -679,11 +969,13 @@ class TestEngineCapabilities:
 class TestDoclingServeEngine:
     def test_name(self):
         from docfold.engines.docling_serve_engine import DoclingServeEngine
+
         e = DoclingServeEngine()
         assert e.name == "docling_serve"
 
     def test_supported_extensions(self):
         from docfold.engines.docling_serve_engine import DoclingServeEngine
+
         e = DoclingServeEngine()
         exts = e.supported_extensions
         assert "pdf" in exts
@@ -693,6 +985,7 @@ class TestDoclingServeEngine:
 
     def test_is_available_without_url(self):
         from docfold.engines.docling_serve_engine import DoclingServeEngine
+
         with patch.dict("os.environ", {}, clear=True):
             e = DoclingServeEngine(base_url="")
             assert e.is_available() is False
@@ -701,12 +994,14 @@ class TestDoclingServeEngine:
         import types
 
         from docfold.engines.docling_serve_engine import DoclingServeEngine
+
         e = DoclingServeEngine(base_url="https://docling.example.com")
         with patch.dict("sys.modules", {"requests": types.ModuleType("requests")}):
             assert e.is_available() is True
 
     def test_config_stored(self):
         from docfold.engines.docling_serve_engine import DoclingServeEngine
+
         e = DoclingServeEngine(
             base_url="https://test.example.com",
             api_key="secret",
@@ -720,6 +1015,7 @@ class TestDoclingServeEngine:
 
     def test_capabilities(self):
         from docfold.engines.docling_serve_engine import DoclingServeEngine
+
         caps = DoclingServeEngine().capabilities
         assert isinstance(caps, EngineCapabilities)
         assert caps.images is True
@@ -750,6 +1046,7 @@ class TestDoclingServeEngine:
         e = DoclingServeEngine(base_url="https://test.example.com")
 
         import tempfile
+
         with tempfile.NamedTemporaryFile(suffix=".pdf", delete=False) as f:
             f.write(b"%PDF-1.4 fake")
             tmp_path = f.name
@@ -768,17 +1065,20 @@ class TestDoclingServeEngine:
                 assert "/v1/convert/file" in call_args[0][0]
         finally:
             import os
+
             os.unlink(tmp_path)
 
 
 class TestFirecrawlEngine:
     def test_name(self):
         from docfold.engines.firecrawl_engine import FirecrawlEngine
+
         e = FirecrawlEngine()
         assert e.name == "firecrawl"
 
     def test_supported_extensions(self):
         from docfold.engines.firecrawl_engine import FirecrawlEngine
+
         e = FirecrawlEngine()
         exts = e.supported_extensions
         assert "pdf" in exts
@@ -791,17 +1091,20 @@ class TestFirecrawlEngine:
 
     def test_is_available_without_key(self):
         from docfold.engines.firecrawl_engine import FirecrawlEngine
+
         with patch.dict("os.environ", {}, clear=True):
             e = FirecrawlEngine(api_key=None)
             assert e.is_available() is False
 
     def test_is_available_with_key(self):
         from docfold.engines.firecrawl_engine import FirecrawlEngine
+
         e = FirecrawlEngine(api_key="fc-test-key")
         assert e.is_available() is True
 
     def test_config_stored(self):
         from docfold.engines.firecrawl_engine import FirecrawlEngine
+
         e = FirecrawlEngine(
             api_key="fc-key",
             api_url="https://custom.firecrawl.dev",
@@ -813,6 +1116,7 @@ class TestFirecrawlEngine:
 
     def test_capabilities(self):
         from docfold.engines.firecrawl_engine import FirecrawlEngine
+
         caps = FirecrawlEngine().capabilities
         assert isinstance(caps, EngineCapabilities)
         assert caps.table_structure is True
@@ -830,13 +1134,15 @@ class TestFirecrawlEngine:
         from docfold.engines.base import OutputFormat
         from docfold.engines.firecrawl_engine import FirecrawlEngine
 
-        api_response = json.dumps({
-            "success": True,
-            "data": {
-                "markdown": "# Invoice\n\nTotal: $100",
-                "metadata": {"title": "Invoice"},
-            },
-        }).encode()
+        api_response = json.dumps(
+            {
+                "success": True,
+                "data": {
+                    "markdown": "# Invoice\n\nTotal: $100",
+                    "metadata": {"title": "Invoice"},
+                },
+            }
+        ).encode()
 
         mock_resp = MagicMock()
         mock_resp.read.return_value = api_response
@@ -846,6 +1152,7 @@ class TestFirecrawlEngine:
         e = FirecrawlEngine(api_key="fc-test")
 
         import tempfile
+
         with tempfile.NamedTemporaryFile(suffix=".pdf", delete=False) as f:
             f.write(b"%PDF-1.4 fake pdf content")
             tmp_path = f.name
@@ -866,6 +1173,7 @@ class TestFirecrawlEngine:
             assert "rawContent" in body
         finally:
             import os
+
             os.unlink(tmp_path)
 
     @pytest.mark.asyncio
@@ -877,13 +1185,15 @@ class TestFirecrawlEngine:
         from docfold.engines.base import OutputFormat
         from docfold.engines.firecrawl_engine import FirecrawlEngine
 
-        api_response = json.dumps({
-            "success": True,
-            "data": {
-                "markdown": "# Page Title\n\nSome content",
-                "metadata": {"title": "Page Title"},
-            },
-        }).encode()
+        api_response = json.dumps(
+            {
+                "success": True,
+                "data": {
+                    "markdown": "# Page Title\n\nSome content",
+                    "metadata": {"title": "Page Title"},
+                },
+            }
+        ).encode()
 
         mock_resp = MagicMock()
         mock_resp.read.return_value = api_response
@@ -893,6 +1203,7 @@ class TestFirecrawlEngine:
         e = FirecrawlEngine(api_key="fc-test")
 
         import tempfile
+
         with tempfile.NamedTemporaryFile(suffix=".html", delete=False, mode="w") as f:
             f.write("<html><body><h1>Page Title</h1><p>Some content</p></body></html>")
             tmp_path = f.name
@@ -911,6 +1222,7 @@ class TestFirecrawlEngine:
             assert "rawContent" not in body
         finally:
             import os
+
             os.unlink(tmp_path)
 
     @pytest.mark.asyncio
@@ -924,6 +1236,7 @@ class TestFirecrawlEngine:
         e = FirecrawlEngine(api_key="bad-key")
 
         import tempfile
+
         with tempfile.NamedTemporaryFile(suffix=".pdf", delete=False) as f:
             f.write(b"%PDF-1.4 fake")
             tmp_path = f.name
@@ -933,42 +1246,50 @@ class TestFirecrawlEngine:
                 "urllib.request.urlopen",
                 side_effect=HTTPError(
                     url="https://api.firecrawl.dev/v1/scrape",
-                    code=401, msg="Unauthorized", hdrs={}, fp=None,
+                    code=401,
+                    msg="Unauthorized",
+                    hdrs={},
+                    fp=None,
                 ),
             ):
                 with pytest.raises(HTTPError):
                     await e.process(tmp_path, output_format=OutputFormat.MARKDOWN)
         finally:
             import os
+
             os.unlink(tmp_path)
 
 
 class TestAllEnginesImplementInterface:
     """Verify every adapter satisfies the DocumentEngine ABC."""
 
-    @pytest.mark.parametrize("engine_cls_path", [
-        "docfold.engines.docling_engine.DoclingEngine",
-        "docfold.engines.mineru_engine.MinerUEngine",
-        "docfold.engines.marker_engine.MarkerEngine",
-        "docfold.engines.pymupdf_engine.PyMuPDFEngine",
-        "docfold.engines.paddleocr_engine.PaddleOCREngine",
-        "docfold.engines.tesseract_engine.TesseractEngine",
-        "docfold.engines.easyocr_engine.EasyOCREngine",
-        "docfold.engines.unstructured_engine.UnstructuredEngine",
-        "docfold.engines.llamaparse_engine.LlamaParseEngine",
-        "docfold.engines.mistral_ocr_engine.MistralOCREngine",
-        "docfold.engines.zerox_engine.ZeroxEngine",
-        "docfold.engines.textract_engine.TextractEngine",
-        "docfold.engines.google_docai_engine.GoogleDocAIEngine",
-        "docfold.engines.azure_docint_engine.AzureDocIntEngine",
-        "docfold.engines.nougat_engine.NougatEngine",
-        "docfold.engines.surya_engine.SuryaEngine",
-        "docfold.engines.docling_serve_engine.DoclingServeEngine",
-        "docfold.engines.firecrawl_engine.FirecrawlEngine",
-    ])
+    @pytest.mark.parametrize(
+        "engine_cls_path",
+        [
+            "docfold.engines.docling_engine.DoclingEngine",
+            "docfold.engines.mineru_engine.MinerUEngine",
+            "docfold.engines.marker_engine.MarkerEngine",
+            "docfold.engines.pymupdf_engine.PyMuPDFEngine",
+            "docfold.engines.paddleocr_engine.PaddleOCREngine",
+            "docfold.engines.tesseract_engine.TesseractEngine",
+            "docfold.engines.easyocr_engine.EasyOCREngine",
+            "docfold.engines.unstructured_engine.UnstructuredEngine",
+            "docfold.engines.llamaparse_engine.LlamaParseEngine",
+            "docfold.engines.mistral_ocr_engine.MistralOCREngine",
+            "docfold.engines.zerox_engine.ZeroxEngine",
+            "docfold.engines.textract_engine.TextractEngine",
+            "docfold.engines.google_docai_engine.GoogleDocAIEngine",
+            "docfold.engines.azure_docint_engine.AzureDocIntEngine",
+            "docfold.engines.nougat_engine.NougatEngine",
+            "docfold.engines.surya_engine.SuryaEngine",
+            "docfold.engines.docling_serve_engine.DoclingServeEngine",
+            "docfold.engines.firecrawl_engine.FirecrawlEngine",
+        ],
+    )
     def test_has_required_attributes(self, engine_cls_path):
         module_path, cls_name = engine_cls_path.rsplit(".", 1)
         import importlib
+
         mod = importlib.import_module(module_path)
         cls = getattr(mod, cls_name)
         _needs_key = {"MarkerEngine", "LlamaParseEngine", "MistralOCREngine", "FirecrawlEngine"}

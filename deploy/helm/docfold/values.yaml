@@ -1,0 +1,143 @@
+# docfold Helm chart default values
+
+# -- API Deployment --
+api:
+  replicaCount: 2
+  image:
+    repository: docfold
+    tag: latest
+    pullPolicy: IfNotPresent
+
+  resources:
+    requests:
+      cpu: 250m
+      memory: 512Mi
+    limits:
+      cpu: "1"
+      memory: 2Gi
+
+  env:
+    DOCFOLD_MODE: api
+    DOCFOLD_WORKERS: "2"
+    DOCFOLD_LOG_LEVEL: info
+
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+
+  # -- Autoscaling --
+  autoscaling:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 10
+    targetCPUUtilizationPercentage: 70
+    targetMemoryUtilizationPercentage: 80
+
+# -- Worker Deployment --
+worker:
+  replicaCount: 1
+  image:
+    repository: docfold
+    tag: latest
+    pullPolicy: IfNotPresent
+
+  # Use GPU image for GPU workers
+  gpu:
+    enabled: false
+    image:
+      repository: docfold
+      tag: gpu
+    resources:
+      limits:
+        nvidia.com/gpu: 1
+
+  resources:
+    requests:
+      cpu: 500m
+      memory: 1Gi
+    limits:
+      cpu: "2"
+      memory: 4Gi
+
+  env:
+    DOCFOLD_MODE: worker
+    DOCFOLD_LOG_LEVEL: info
+
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+
+  autoscaling:
+    enabled: true
+    minReplicas: 1
+    maxReplicas: 5
+    targetCPUUtilizationPercentage: 80
+
+# -- Service --
+service:
+  type: ClusterIP
+  port: 8000
+  targetPort: 8000
+
+# -- Ingress --
+ingress:
+  enabled: false
+  className: nginx
+  annotations: {}
+    # cert-manager.io/cluster-issuer: letsencrypt-prod
+  hosts:
+    - host: docfold.example.com
+      paths:
+        - path: /
+          pathType: Prefix
+  tls: []
+    # - secretName: docfold-tls
+    #   hosts:
+    #     - docfold.example.com
+
+# -- Redis (Bitnami subchart) --
+redis:
+  enabled: true
+  architecture: standalone
+  auth:
+    enabled: true
+    password: ""  # Set via --set redis.auth.password=<password> or existingSecret
+  master:
+    persistence:
+      size: 1Gi
+
+# -- Configuration --
+config:
+  redisUrl: "redis://{{ .Release.Name }}-redis-master:6379"
+  uploadDir: /data/uploads
+  resultsDir: /data/results
+  maxUploadSizeMb: 100
+  resultTtlHours: 24
+  corsOrigins: ""  # Comma-separated allowed origins (empty = deny all)
+
+  # API authentication
+  apiKeys: ""       # Comma-separated API keys (empty = auth disabled)
+  serviceKey: ""    # Inter-service shared secret
+
+# -- Storage --
+storage:
+  uploads:
+    enabled: true
+    size: 10Gi
+    storageClassName: ""
+    accessModes:
+      - ReadWriteMany
+  results:
+    enabled: true
+    size: 20Gi
+    storageClassName: ""
+    accessModes:
+      - ReadWriteMany
+
+# -- Image pull secrets --
+imagePullSecrets: []
+
+# -- Service account --
+serviceAccount:
+  create: false
+  name: ""

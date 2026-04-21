@@ -25,8 +25,18 @@ from docfold.engines.base import DocumentEngine, EngineCapabilities, EngineResul
 logger = logging.getLogger(__name__)
 
 _SUPPORTED_EXTENSIONS = {
-    "pdf", "docx", "pptx", "xlsx", "html",
-    "png", "jpg", "jpeg", "tiff", "tif", "webp", "bmp",
+    "pdf",
+    "docx",
+    "pptx",
+    "xlsx",
+    "html",
+    "png",
+    "jpg",
+    "jpeg",
+    "tiff",
+    "tif",
+    "webp",
+    "bmp",
 }
 
 
@@ -47,9 +57,7 @@ class DoclingServeEngine(DocumentEngine):
         do_ocr: bool = True,
         timeout: int = 300,
     ) -> None:
-        self._base_url = (
-            base_url or os.getenv("DOCLING_SERVE_URL") or ""
-        ).rstrip("/")
+        self._base_url = (base_url or os.getenv("DOCLING_SERVE_URL") or "").rstrip("/")
         self._api_key = api_key or os.getenv("DOCLING_SERVE_API_KEY", "")
         self._do_ocr = do_ocr
         self._timeout = timeout
@@ -75,6 +83,7 @@ class DoclingServeEngine(DocumentEngine):
     def is_available(self) -> bool:
         try:
             import requests  # noqa: F401
+
             return bool(self._base_url)
         except ImportError:
             return False
@@ -173,7 +182,10 @@ class DoclingServeEngine(DocumentEngine):
                     logger.warning(
                         "docling_serve connection error (attempt %d, %.0fs left): %s "
                         "- retrying in %ds",
-                        attempt, remaining, exc, delay,
+                        attempt,
+                        remaining,
+                        exc,
+                        delay,
                     )
                     time.sleep(delay)
                     continue
@@ -188,9 +200,10 @@ class DoclingServeEngine(DocumentEngine):
             delay = retry_delays[min(attempt - 1, len(retry_delays) - 1)]
             delay = int(min(delay, remaining))
             logger.warning(
-                "docling_serve 503 (model loading, attempt %d, %.0fs left) "
-                "- retrying in %ds",
-                attempt, remaining, delay,
+                "docling_serve 503 (model loading, attempt %d, %.0fs left) - retrying in %ds",
+                attempt,
+                remaining,
+                delay,
             )
             time.sleep(delay)
 

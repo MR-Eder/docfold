@@ -1,4 +1,4 @@
-﻿"""Tests for the base engine interface and EngineResult dataclass."""
+"""Tests for the base engine interface and EngineResult dataclass."""
 
 import pytest
 

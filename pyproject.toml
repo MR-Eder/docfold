@@ -95,8 +95,20 @@ surya = [
     "torch>=2.0",
     "Pillow>=10.0",
 ]
+lightonocr = [
+    "transformers>=5.0",
+    "torch>=2.0",
+    "pypdfium2>=4.0",
+    "Pillow>=10.0",
+]
 firecrawl = [
     "firecrawl-py>=1.0",
+]
+glm-ocr = [
+    "glmocr",
+]
+glm-ocr-selfhosted = [
+    "glmocr[selfhosted]",
 ]
 evaluation = [
     "jiwer>=3.0",          # WER/CER computation
@@ -105,8 +117,16 @@ evaluation = [
     "tabulate>=0.9",       # Report tables
     "psutil>=5.9",         # Memory measurement
 ]
+api = [
+    "fastapi>=0.110",
+    "uvicorn[standard]>=0.27",
+    "python-multipart>=0.0.6",
+    "pydantic-settings>=2.0",
+    "redis>=5.0",
+    "arq>=0.25",
+]
 all = [
-    "docfold[docling,mineru,marker,pymupdf,paddleocr,tesseract,easyocr,unstructured,llamaparse,mistral-ocr,textract,google-docai,azure-docint,nougat,surya,firecrawl,evaluation]",
+    "docfold[docling,mineru,marker,pymupdf,paddleocr,tesseract,easyocr,unstructured,llamaparse,mistral-ocr,glm-ocr,textract,google-docai,azure-docint,nougat,surya,lightonocr,firecrawl,evaluation]",
     # Note: zerox excluded from [all] — py-zerox requires Python 3.11+
     # Install separately: pip install docfold[zerox]
 ]
@@ -117,6 +137,7 @@ test = [
     "pytest-timeout>=2.1",
     "ruff>=0.4",
     "mypy>=1.8",
+    "httpx>=0.27",
 ]
 dev = [
     "docfold[test]",

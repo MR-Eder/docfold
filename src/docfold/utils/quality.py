@@ -54,9 +54,7 @@ class QualityThresholds:
                 os.environ.get("DOCFOLD_QUALITY_OCR_CONFIDENCE_MIN", defaults.ocr_confidence_min)
             ),
             gibberish_ratio_max=float(
-                os.environ.get(
-                    "DOCFOLD_QUALITY_GIBBERISH_RATIO_MAX", defaults.gibberish_ratio_max
-                )
+                os.environ.get("DOCFOLD_QUALITY_GIBBERISH_RATIO_MAX", defaults.gibberish_ratio_max)
             ),
         )
 

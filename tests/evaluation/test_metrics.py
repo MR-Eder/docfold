@@ -1,4 +1,4 @@
-﻿"""Tests for evaluation metrics."""
+"""Tests for evaluation metrics."""
 
 from docfold.evaluation.metrics import (
     compute_cer,

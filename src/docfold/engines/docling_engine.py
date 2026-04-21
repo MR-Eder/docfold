@@ -14,9 +14,19 @@ from docfold.engines.base import DocumentEngine, EngineCapabilities, EngineResul
 logger = logging.getLogger(__name__)
 
 _SUPPORTED_EXTENSIONS = {
-    "pdf", "docx", "pptx", "xlsx", "html",
-    "png", "jpg", "jpeg", "tiff", "tif",
-    "wav", "mp3", "vtt",
+    "pdf",
+    "docx",
+    "pptx",
+    "xlsx",
+    "html",
+    "png",
+    "jpg",
+    "jpeg",
+    "tiff",
+    "tif",
+    "wav",
+    "mp3",
+    "vtt",
 }
 
 
@@ -42,13 +52,17 @@ class DoclingEngine(DocumentEngine):
     @property
     def capabilities(self) -> EngineCapabilities:
         return EngineCapabilities(
-            bounding_boxes=True, images=True, table_structure=True,
-            heading_detection=True, reading_order=True,
+            bounding_boxes=True,
+            images=True,
+            table_structure=True,
+            heading_detection=True,
+            reading_order=True,
         )
 
     def is_available(self) -> bool:
         try:
             import docling  # noqa: F401
+
             return True
         except ImportError:
             return False
@@ -57,6 +71,7 @@ class DoclingEngine(DocumentEngine):
         """Lazy-init the Docling DocumentConverter."""
         if self._converter is None:
             from docling.document_converter import DocumentConverter
+
             self._converter = DocumentConverter()
         return self._converter
 
@@ -83,6 +98,7 @@ class DoclingEngine(DocumentEngine):
             content = doc.export_to_html()
         elif output_format == OutputFormat.JSON:
             import json
+
             content = json.dumps(doc.export_to_dict(), ensure_ascii=False)
         else:
             content = doc.export_to_markdown()

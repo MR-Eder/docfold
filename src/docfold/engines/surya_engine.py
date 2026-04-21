@@ -59,6 +59,7 @@ class SuryaEngine(DocumentEngine):
     def is_available(self) -> bool:
         try:
             import surya  # noqa: F401
+
             return True
         except ImportError:
             return False
@@ -109,9 +110,7 @@ class SuryaEngine(DocumentEngine):
         else:
             return [Image.open(file_path)]
 
-    def _do_process(
-        self, file_path: str, output_format: OutputFormat
-    ) -> tuple[str, int, dict]:
+    def _do_process(self, file_path: str, output_format: OutputFormat) -> tuple[str, int, dict]:
         from surya.layout import batch_layout_detection
         from surya.model.detection.model import load_model as load_det_model
         from surya.model.detection.processor import load_processor as load_det_processor
@@ -139,30 +138,34 @@ class SuryaEngine(DocumentEngine):
 
         # Build structured pages
         pages_data: list[dict] = []
-        for page_idx, (ocr_pred, layout_pred) in enumerate(
-            zip(predictions, layout_predictions)
-        ):
+        for page_idx, (ocr_pred, layout_pred) in enumerate(zip(predictions, layout_predictions)):
             lines = []
             for line in ocr_pred.text_lines:
-                lines.append({
-                    "text": line.text,
-                    "bbox": line.bbox,
-                    "confidence": getattr(line, "confidence", None),
-                })
+                lines.append(
+                    {
+                        "text": line.text,
+                        "bbox": line.bbox,
+                        "confidence": getattr(line, "confidence", None),
+                    }
+                )
 
             layout_elements = []
             for elem in layout_pred.bboxes:
-                layout_elements.append({
-                    "label": elem.label,
-                    "bbox": elem.bbox,
-                    "confidence": getattr(elem, "confidence", None),
-                })
+                layout_elements.append(
+                    {
+                        "label": elem.label,
+                        "bbox": elem.bbox,
+                        "confidence": getattr(elem, "confidence", None),
+                    }
+                )
 
-            pages_data.append({
-                "page": page_idx + 1,
-                "lines": lines,
-                "layout": layout_elements,
-            })
+            pages_data.append(
+                {
+                    "page": page_idx + 1,
+                    "lines": lines,
+                    "layout": layout_elements,
+                }
+            )
 
         # Format output
         content = self._format_output(pages_data, output_format)
@@ -170,19 +173,16 @@ class SuryaEngine(DocumentEngine):
 
         return content, page_count, metadata
 
-    def _format_output(
-        self, pages_data: list[dict], output_format: OutputFormat
-    ) -> str:
+    def _format_output(self, pages_data: list[dict], output_format: OutputFormat) -> str:
         if output_format == OutputFormat.JSON:
             import json
+
             return json.dumps({"pages": pages_data}, ensure_ascii=False)
 
         if output_format == OutputFormat.HTML:
             html_parts = []
             for page in pages_data:
-                lines_html = "".join(
-                    f"<p>{line['text']}</p>" for line in page["lines"]
-                )
+                lines_html = "".join(f"<p>{line['text']}</p>" for line in page["lines"])
                 html_parts.append(
                     f"<div class='page' data-page='{page['page']}'>{lines_html}</div>"
                 )

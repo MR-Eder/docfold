@@ -1,0 +1,187 @@
+# Raw Kubernetes Manifests
+#
+# These are standalone K8s manifests as an alternative to the Helm chart.
+# For production use, prefer the Helm chart at deploy/helm/docfold/
+#
+# Apply with:
+#   kubectl apply -f deploy/k8s/
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: docfold
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: docfold-config
+  namespace: docfold
+data:
+  DOCFOLD_REDIS_URL: "redis://:$(REDIS_PASSWORD)@redis:6379"
+  DOCFOLD_UPLOAD_DIR: "/data/uploads"
+  DOCFOLD_RESULTS_DIR: "/data/results"
+  DOCFOLD_MAX_UPLOAD_SIZE_MB: "100"
+  DOCFOLD_CORS_ORIGINS: ""  # Set to your allowed origins
+---
+# Create this secret:
+#   kubectl create secret generic docfold-secrets -n docfold \
+#     --from-literal=DOCFOLD_API_KEYS=<your-api-key> \
+#     --from-literal=DOCFOLD_SERVICE_KEY=<your-service-key> \
+#     --from-literal=REDIS_PASSWORD=<your-redis-password>
+apiVersion: v1
+kind: Secret
+metadata:
+  name: docfold-secrets
+  namespace: docfold
+type: Opaque
+stringData:
+  DOCFOLD_API_KEYS: ""
+  DOCFOLD_SERVICE_KEY: ""
+  REDIS_PASSWORD: ""
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: docfold-api
+  namespace: docfold
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: docfold
+      component: api
+  template:
+    metadata:
+      labels:
+        app: docfold
+        component: api
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        fsGroup: 1000
+      containers:
+        - name: api
+          image: docfold:latest
+          ports:
+            - containerPort: 8000
+          env:
+            - name: DOCFOLD_MODE
+              value: api
+            - name: DOCFOLD_WORKERS
+              value: "2"
+          envFrom:
+            - configMapRef:
+                name: docfold-config
+            - secretRef:
+                name: docfold-secrets
+          securityContext:
+            readOnlyRootFilesystem: true
+            allowPrivilegeEscalation: false
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: 8000
+            initialDelaySeconds: 15
+          resources:
+            requests:
+              cpu: 250m
+              memory: 512Mi
+            limits:
+              cpu: "1"
+              memory: 2Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: docfold-worker
+  namespace: docfold
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: docfold
+      component: worker
+  template:
+    metadata:
+      labels:
+        app: docfold
+        component: worker
+    spec:
+      containers:
+        - name: worker
+          image: docfold:latest
+          env:
+            - name: DOCFOLD_MODE
+              value: worker
+          envFrom:
+            - configMapRef:
+                name: docfold-config
+          resources:
+            requests:
+              cpu: 500m
+              memory: 1Gi
+            limits:
+              cpu: "2"
+              memory: 4Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: docfold-api
+  namespace: docfold
+spec:
+  type: ClusterIP
+  ports:
+    - port: 8000
+      targetPort: 8000
+  selector:
+    app: docfold
+    component: api
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: redis
+  namespace: docfold
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: redis
+  template:
+    metadata:
+      labels:
+        app: redis
+    spec:
+      containers:
+        - name: redis
+          image: redis:7.4-alpine
+          args:
+            - redis-server
+            - --requirepass
+            - $(REDIS_PASSWORD)
+          env:
+            - name: REDIS_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: docfold-secrets
+                  key: REDIS_PASSWORD
+          ports:
+            - containerPort: 6379
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis
+  namespace: docfold
+spec:
+  ports:
+    - port: 6379
+  selector:
+    app: redis

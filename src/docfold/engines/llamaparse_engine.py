@@ -18,8 +18,20 @@ from docfold.engines.base import DocumentEngine, EngineCapabilities, EngineResul
 logger = logging.getLogger(__name__)
 
 _SUPPORTED_EXTENSIONS = {
-    "pdf", "docx", "doc", "pptx", "ppt", "xlsx", "xls",
-    "html", "htm", "png", "jpg", "jpeg", "csv", "epub",
+    "pdf",
+    "docx",
+    "doc",
+    "pptx",
+    "ppt",
+    "xlsx",
+    "xls",
+    "html",
+    "htm",
+    "png",
+    "jpg",
+    "jpeg",
+    "csv",
+    "epub",
 }
 
 
@@ -76,9 +88,7 @@ class LlamaParseEngine(DocumentEngine):
             metadata=metadata,
         )
 
-    async def _parse(
-        self, file_path: str, output_format: OutputFormat
-    ) -> tuple[str, dict]:
+    async def _parse(self, file_path: str, output_format: OutputFormat) -> tuple[str, dict]:
         from llama_parse import LlamaParse
 
         fmt_map = {

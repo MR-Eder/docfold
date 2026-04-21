@@ -169,7 +169,7 @@ class TestGibberishRatio:
         assert 0.03 < ratio < 0.05
 
     def test_all_gibberish(self):
-        text = "\u2500\u2580\u25A0\u25FF"  # all box/block/geometric
+        text = "\u2500\u2580\u25a0\u25ff"  # all box/block/geometric
         ratio = gibberish_ratio(text)
         assert ratio == 1.0
 

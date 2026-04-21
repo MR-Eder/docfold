@@ -23,65 +23,107 @@ logger = logging.getLogger(__name__)
 # the first *available* engine that supports the extension.
 
 _IMAGE_PRIORITY = [
-    "surya", "paddleocr", "tesseract", "easyocr", "docling", "mistral_ocr",
-    "google_docai", "textract", "azure_docint", "zerox", "marker",
+    "surya",
+    "paddleocr",
+    "tesseract",
+    "easyocr",
+    "lightonocr",
+    "docling",
+    "mistral_ocr",
+    "glm_ocr",
+    "google_docai",
+    "textract",
+    "azure_docint",
+    "zerox",
+    "marker",
 ]
 
 _EXTENSION_PRIORITY: dict[str, list[str]] = {
     # --- PDF ---
     "pdf": [
-        "docling", "mineru", "unstructured", "marker",
-        "llamaparse", "mistral_ocr", "firecrawl", "google_docai", "azure_docint",
-        "textract", "zerox", "nougat", "surya", "pymupdf", "paddleocr", "tesseract",
+        "docling",
+        "mineru",
+        "unstructured",
+        "marker",
+        "llamaparse",
+        "mistral_ocr",
+        "glm_ocr",
+        "firecrawl",
+        "google_docai",
+        "azure_docint",
+        "textract",
+        "zerox",
+        "lightonocr",
+        "nougat",
+        "surya",
+        "pymupdf",
+        "paddleocr",
+        "tesseract",
         "easyocr",
     ],
     # --- Office ---
     "docx": ["docling", "marker", "unstructured", "llamaparse", "firecrawl", "azure_docint"],
-    "doc":  ["docling", "marker", "unstructured", "llamaparse", "azure_docint"],
+    "doc": ["docling", "marker", "unstructured", "llamaparse", "azure_docint"],
     "pptx": ["docling", "marker", "unstructured", "llamaparse", "azure_docint"],
-    "ppt":  ["docling", "marker", "unstructured", "llamaparse", "azure_docint"],
+    "ppt": ["docling", "marker", "unstructured", "llamaparse", "azure_docint"],
     "xlsx": ["docling", "marker", "unstructured", "llamaparse", "azure_docint"],
-    "xls":  ["docling", "marker", "unstructured", "llamaparse", "azure_docint"],
-    "odt":  ["marker", "unstructured"],
-    "odp":  ["marker", "unstructured"],
-    "ods":  ["marker", "unstructured"],
+    "xls": ["docling", "marker", "unstructured", "llamaparse", "azure_docint"],
+    "odt": ["marker", "unstructured"],
+    "odp": ["marker", "unstructured"],
+    "ods": ["marker", "unstructured"],
     # --- Web / markup ---
     "html": ["docling", "firecrawl", "unstructured", "marker", "azure_docint"],
-    "htm":  ["docling", "firecrawl", "unstructured", "marker", "azure_docint"],
-    "xml":  ["firecrawl", "unstructured"],
-    "md":   ["unstructured"],
-    "rst":  ["unstructured"],
-    "csv":  ["unstructured"],
-    "tsv":  ["unstructured"],
-    "txt":  ["unstructured"],
-    "rtf":  ["unstructured"],
+    "htm": ["docling", "firecrawl", "unstructured", "marker", "azure_docint"],
+    "xml": ["firecrawl", "unstructured"],
+    "md": ["unstructured"],
+    "rst": ["unstructured"],
+    "csv": ["unstructured"],
+    "tsv": ["unstructured"],
+    "txt": ["unstructured"],
+    "rtf": ["unstructured"],
     # --- Images ---
-    "png":  _IMAGE_PRIORITY,
-    "jpg":  _IMAGE_PRIORITY,
+    "png": _IMAGE_PRIORITY,
+    "jpg": _IMAGE_PRIORITY,
     "jpeg": _IMAGE_PRIORITY,
     "tiff": _IMAGE_PRIORITY,
-    "tif":  _IMAGE_PRIORITY,
-    "bmp":  _IMAGE_PRIORITY,
+    "tif": _IMAGE_PRIORITY,
+    "bmp": _IMAGE_PRIORITY,
     "webp": _IMAGE_PRIORITY,
-    "gif":  ["google_docai"],
+    "gif": ["google_docai"],
     # --- Email ---
-    "eml":  ["unstructured"],
-    "msg":  ["unstructured"],
+    "eml": ["unstructured"],
+    "msg": ["unstructured"],
     # --- eBooks ---
     "epub": ["unstructured", "marker"],
 }
 
 # Ultimate fallback when extension is unknown or missing from the map.
 _DEFAULT_FALLBACK = [
-    "docling", "mineru", "unstructured", "marker",
-    "llamaparse", "mistral_ocr", "google_docai", "azure_docint", "textract",
-    "zerox", "nougat", "surya", "pymupdf", "paddleocr", "tesseract", "easyocr",
+    "docling",
+    "mineru",
+    "unstructured",
+    "marker",
+    "llamaparse",
+    "mistral_ocr",
+    "glm_ocr",
+    "google_docai",
+    "azure_docint",
+    "textract",
+    "zerox",
+    "lightonocr",
+    "nougat",
+    "surya",
+    "pymupdf",
+    "paddleocr",
+    "tesseract",
+    "easyocr",
 ]
 
 
 # ------------------------------------------------------------------
 # Progress callback protocol
 # ------------------------------------------------------------------
+
 
 class ProgressCallback(Protocol):
     """Protocol for progress reporting.
@@ -196,9 +238,7 @@ class EngineRouter:
             engine = self._engines.get(engine_hint)
             if engine is None:
                 available = ", ".join(self._engines)
-                raise ValueError(
-                    f"Unknown engine '{engine_hint}'. Available: {available}"
-                )
+                raise ValueError(f"Unknown engine '{engine_hint}'. Available: {available}")
             if not engine.is_available():
                 raise RuntimeError(f"Engine '{engine_hint}' is registered but not available.")
             if ext and ext not in engine.supported_extensions:
@@ -228,8 +268,7 @@ class EngineRouter:
                 return engine
 
         raise ValueError(
-            f"No available engine supports '.{ext}'. "
-            f"Registered: {list(self._engines.keys())}"
+            f"No available engine supports '.{ext}'. Registered: {list(self._engines.keys())}"
         )
 
     # ------------------------------------------------------------------
@@ -272,8 +311,7 @@ class EngineRouter:
 
         if not candidates:
             raise ValueError(
-                f"No available engine supports '.{ext}'. "
-                f"Registered: {list(self._engines.keys())}"
+                f"No available engine supports '.{ext}'. Registered: {list(self._engines.keys())}"
             )
 
         errors: list[tuple[str, Exception]] = []
@@ -284,15 +322,15 @@ class EngineRouter:
             except Exception as exc:
                 logger.warning(
                     "Engine '%s' failed on '%s': %s — trying next engine",
-                    engine.name, file_path, exc,
+                    engine.name,
+                    file_path,
+                    exc,
                 )
                 errors.append((engine.name, exc))
 
         # All candidates exhausted
         err_summary = "; ".join(f"{name}: {exc}" for name, exc in errors)
-        raise RuntimeError(
-            f"All engines failed for '{file_path}'. Errors: {err_summary}"
-        )
+        raise RuntimeError(f"All engines failed for '{file_path}'. Errors: {err_summary}")
 
     # ------------------------------------------------------------------
     # Batch processing

@@ -18,17 +18,20 @@ def main(argv: list[str] | None = None) -> None:
     convert_p = sub.add_parser("convert", help="Convert a document to structured text")
     convert_p.add_argument("file", help="Path to the input document")
     convert_p.add_argument(
-        "-e", "--engine",
+        "-e",
+        "--engine",
         help="Engine to use. Default: auto-select.",
     )
     convert_p.add_argument(
-        "-f", "--format",
+        "-f",
+        "--format",
         choices=["markdown", "html", "json", "text"],
         default="markdown",
         help="Output format (default: markdown)",
     )
     convert_p.add_argument(
-        "-o", "--output",
+        "-o",
+        "--output",
         help="Output file path. If omitted, prints to stdout.",
     )
     convert_p.add_argument(
@@ -43,7 +46,8 @@ def main(argv: list[str] | None = None) -> None:
     compare_p = sub.add_parser("compare", help="Compare engines on a document")
     compare_p.add_argument("file", help="Path to the input document")
     compare_p.add_argument(
-        "-e", "--engines",
+        "-e",
+        "--engines",
         help="Comma-separated engine names. Default: all available.",
     )
 
@@ -51,11 +55,13 @@ def main(argv: list[str] | None = None) -> None:
     eval_p = sub.add_parser("evaluate", help="Run evaluation benchmark")
     eval_p.add_argument("dataset", help="Path to evaluation dataset directory")
     eval_p.add_argument(
-        "-e", "--engines",
+        "-e",
+        "--engines",
         help="Comma-separated engine names. Default: all available.",
     )
     eval_p.add_argument(
-        "-o", "--output",
+        "-o",
+        "--output",
         help="Output file for evaluation report (JSON).",
     )
 
@@ -84,102 +90,133 @@ def _build_router():
     # Try importing each engine adapter; register if available
     try:
         from docfold.engines.docling_engine import DoclingEngine
+
         router.register(DoclingEngine())
     except Exception:
         pass
 
     try:
         from docfold.engines.mineru_engine import MinerUEngine
+
         router.register(MinerUEngine())
     except Exception:
         pass
 
     try:
         from docfold.engines.marker_engine import MarkerEngine
+
         router.register(MarkerEngine())
     except Exception:
         pass
 
     try:
         from docfold.engines.pymupdf_engine import PyMuPDFEngine
+
         router.register(PyMuPDFEngine())
     except Exception:
         pass
 
     try:
         from docfold.engines.paddleocr_engine import PaddleOCREngine
+
         router.register(PaddleOCREngine())
     except Exception:
         pass
 
     try:
         from docfold.engines.tesseract_engine import TesseractEngine
+
         router.register(TesseractEngine())
     except Exception:
         pass
 
     try:
         from docfold.engines.easyocr_engine import EasyOCREngine
+
         router.register(EasyOCREngine())
     except Exception:
         pass
 
     try:
         from docfold.engines.unstructured_engine import UnstructuredEngine
+
         router.register(UnstructuredEngine())
     except Exception:
         pass
 
     try:
         from docfold.engines.llamaparse_engine import LlamaParseEngine
+
         router.register(LlamaParseEngine())
     except Exception:
         pass
 
     try:
         from docfold.engines.mistral_ocr_engine import MistralOCREngine
+
         router.register(MistralOCREngine())
     except Exception:
         pass
 
     try:
+        from docfold.engines.glm_ocr_engine import GLMOCREngine
+
+        router.register(GLMOCREngine())
+    except Exception:
+        pass
+
+    try:
         from docfold.engines.zerox_engine import ZeroxEngine
+
         router.register(ZeroxEngine())
     except Exception:
         pass
 
     try:
         from docfold.engines.textract_engine import TextractEngine
+
         router.register(TextractEngine())
     except Exception:
         pass
 
     try:
         from docfold.engines.google_docai_engine import GoogleDocAIEngine
+
         router.register(GoogleDocAIEngine())
     except Exception:
         pass
 
     try:
         from docfold.engines.azure_docint_engine import AzureDocIntEngine
+
         router.register(AzureDocIntEngine())
     except Exception:
         pass
 
     try:
         from docfold.engines.nougat_engine import NougatEngine
+
         router.register(NougatEngine())
     except Exception:
         pass
 
     try:
         from docfold.engines.surya_engine import SuryaEngine
+
         router.register(SuryaEngine())
     except Exception:
         pass
 
     try:
+        from docfold.engines.lightonocr_engine import LightOnOCREngine
+
+        router.register(LightOnOCREngine())
+    except Exception:
+        pass
+
+    try:
         from docfold.engines.firecrawl_engine import FirecrawlEngine
+
         router.register(FirecrawlEngine())
     except Exception:
         pass
@@ -260,10 +297,7 @@ async def _cmd_compare(args) -> None:
         gib = gibberish_ratio(result.content) if result.content else 0.0
         conf = f"{result.confidence:.2f}" if result.confidence is not None else "—"
         time_str = f"{result.processing_time_ms}ms"
-        print(
-            f"  {name:<16} {status:>8} {length:>8} "
-            f"{gib:>9.1%} {conf:>11} {time_str:>8}"
-        )
+        print(f"  {name:<16} {status:>8} {length:>8} {gib:>9.1%} {conf:>11} {time_str:>8}")
 
     print(f"  {'-' * 68}")
     print(

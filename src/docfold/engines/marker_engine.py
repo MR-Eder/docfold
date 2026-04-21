@@ -36,9 +36,24 @@ from docfold.engines.base import (
 logger = logging.getLogger(__name__)
 
 _SUPPORTED_EXTENSIONS = {
-    "pdf", "docx", "doc", "pptx", "ppt", "xlsx", "xls",
-    "odt", "odp", "ods", "html", "epub",
-    "png", "jpg", "jpeg", "webp", "gif", "tiff",
+    "pdf",
+    "docx",
+    "doc",
+    "pptx",
+    "ppt",
+    "xlsx",
+    "xls",
+    "odt",
+    "odp",
+    "ods",
+    "html",
+    "epub",
+    "png",
+    "jpg",
+    "jpeg",
+    "webp",
+    "gif",
+    "tiff",
 }
 
 _API_BASE = "https://www.datalab.to/api/v1/marker"
@@ -48,20 +63,20 @@ _DEFAULT_MAX_POLLS = 300
 # Valid Marker API parameters (non-deprecated, as of 2026-02).
 # Used to filter kwargs before sending to the API.
 _VALID_MARKER_PARAMS = {
-    "mode",                     # fast | balanced | accurate
-    "paginate",                 # bool — add page delimiters
-    "max_pages",                # int — limit pages processed
-    "page_range",               # str — e.g. "0,2-4" (0-indexed)
-    "page_schema",              # str — JSON schema for structured extraction
-    "segmentation_schema",      # str — schema for auto-segmentation
-    "disable_image_extraction", # bool
-    "disable_image_captions",   # bool
-    "add_block_ids",            # bool
-    "skip_cache",               # bool
-    "save_checkpoint",          # bool
-    "additional_config",        # str — JSON string
-    "extras",                   # str — JSON string
-    "webhook_url",              # str
+    "mode",  # fast | balanced | accurate
+    "paginate",  # bool — add page delimiters
+    "max_pages",  # int — limit pages processed
+    "page_range",  # str — e.g. "0,2-4" (0-indexed)
+    "page_schema",  # str — JSON schema for structured extraction
+    "segmentation_schema",  # str — schema for auto-segmentation
+    "disable_image_extraction",  # bool
+    "disable_image_captions",  # bool
+    "add_block_ids",  # bool
+    "skip_cache",  # bool
+    "save_checkpoint",  # bool
+    "additional_config",  # str — JSON string
+    "extras",  # str — JSON string
+    "webhook_url",  # str
 }
 
 
@@ -117,13 +132,17 @@ class MarkerEngine(DocumentEngine):
     @property
     def capabilities(self) -> EngineCapabilities:
         return EngineCapabilities(
-            bounding_boxes=True, confidence=True, images=True,
-            table_structure=True, heading_detection=True,
+            bounding_boxes=True,
+            confidence=True,
+            images=True,
+            table_structure=True,
+            heading_detection=True,
         )
 
     def is_available(self) -> bool:
         try:
             import requests  # noqa: F401
+
             return bool(self._api_key)
         except ImportError:
             return False
@@ -195,6 +214,7 @@ class MarkerEngine(DocumentEngine):
 
         with open(file_path, "rb") as f:
             import mimetypes
+
             mime_type = mimetypes.guess_type(file_path)[0] or "application/octet-stream"
             form_data: dict[str, Any] = {
                 "file": (Path(file_path).name, f, mime_type),
@@ -237,10 +257,7 @@ class MarkerEngine(DocumentEngine):
                     page_bbox = page_node.get("bbox")
                     pw: float | None = None
                     ph: float | None = None
-                    if (
-                        isinstance(page_bbox, list)
-                        and len(page_bbox) >= 4
-                    ):
+                    if isinstance(page_bbox, list) and len(page_bbox) >= 4:
                         pw = float(page_bbox[2] - page_bbox[0])
                         ph = float(page_bbox[3] - page_bbox[1])
                     for idx, block in enumerate(
@@ -248,16 +265,18 @@ class MarkerEngine(DocumentEngine):
                     ):
                         bbox_raw = block.get("bbox")
                         if bbox_raw:
-                            bboxes.append(BoundingBox(
-                                type=block.get("block_type", "Text"),
-                                bbox=bbox_raw,
-                                page=page_num,
-                                text=block.get("html", ""),
-                                id=block.get("id") or f"p{page_num}-b{idx}",
-                                polygon=block.get("polygon"),
-                                page_width=pw,
-                                page_height=ph,
-                            ).to_dict())
+                            bboxes.append(
+                                BoundingBox(
+                                    type=block.get("block_type", "Text"),
+                                    bbox=bbox_raw,
+                                    page=page_num,
+                                    text=block.get("html", ""),
+                                    id=block.get("id") or f"p{page_num}-b{idx}",
+                                    polygon=block.get("polygon"),
+                                    page_width=pw,
+                                    page_height=ph,
+                                ).to_dict()
+                            )
                         block_html = block.get("html", "")
                         if block_html:
                             html_parts.append(block_html)
@@ -268,6 +287,7 @@ class MarkerEngine(DocumentEngine):
                 # Reconstruct content in the requested format
                 if requested_fmt == "json":
                     import json as _json
+
                     content = _json.dumps(json_tree, ensure_ascii=False)
                 elif requested_fmt == "html":
                     content = "\n".join(html_parts)

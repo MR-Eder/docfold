@@ -1,0 +1,39 @@
+# ==========================
+# docfold — docker-compose dev overrides
+# ==========================
+# Usage: docker compose -f docker-compose.yml -f docker-compose.dev.yml up
+
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      additional_contexts:
+        pipeline_common: ../pipeline-common
+    environment:
+      DOCFOLD_MODE: api
+      DOCFOLD_WORKERS: "1"
+      DOCFOLD_LOG_LEVEL: debug
+      DOCFOLD_DEBUG: "true"
+    volumes:
+      # Bind mount for hot reload during development
+      - ./src:/app/src:ro
+    ports:
+      - "8000:8000"
+    command: >
+      python3 -m uvicorn docfold.api.app:app
+      --host 0.0.0.0
+      --port 8000
+      --reload
+      --reload-dir /app/src
+      --log-level debug
+
+  worker:
+    volumes:
+      - ./src:/app/src:ro
+    environment:
+      DOCFOLD_LOG_LEVEL: debug
+
+  redis:
+    ports:
+      - "6379:6379"

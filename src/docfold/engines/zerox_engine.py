@@ -76,9 +76,7 @@ class ZeroxEngine(DocumentEngine):
             metadata=metadata,
         )
 
-    async def _run_zerox(
-        self, file_path: str, output_format: OutputFormat
-    ) -> tuple[str, dict]:
+    async def _run_zerox(self, file_path: str, output_format: OutputFormat) -> tuple[str, dict]:
         from pyzerox import zerox
 
         result = await zerox(
@@ -92,10 +90,7 @@ class ZeroxEngine(DocumentEngine):
         if output_format == OutputFormat.JSON:
             import json
 
-            data = [
-                {"page": page.page, "text": page.content}
-                for page in result.pages
-            ]
+            data = [{"page": page.page, "text": page.content} for page in result.pages]
             content = json.dumps(data, ensure_ascii=False)
         elif output_format == OutputFormat.HTML:
             html_parts = [

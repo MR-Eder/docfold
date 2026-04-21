@@ -1,6 +1,5 @@
 """Tests for the CLI module."""
 
-
 import pytest
 
 from docfold.cli import _build_router, main
@@ -11,6 +10,7 @@ class TestBuildRouter:
         router = _build_router()
         # Should return a router even if no engines are available
         from docfold.engines.router import EngineRouter
+
         assert isinstance(router, EngineRouter)
 
     def test_engines_list_is_list(self):

@@ -1,0 +1,90 @@
+# ==========================
+# docfold — docker-compose
+# ==========================
+# Production-like local deployment
+# Usage: docker compose up -d
+#
+# NOTE: docfold's FastAPI wrapper depends on pipeline-common (shared
+# middleware incl. TenantMiddleware). This compose assumes docfold lives
+# as a sibling of the pipeline-common directory, i.e. the parent
+# DOCUMENT-PROCESSING-PIPELINES checkout. When running docfold truly
+# standalone, fetch pipeline-common separately or pin it to a git URL
+# in the Dockerfile's ``pip install`` step.
+
+services:
+  # --- FastAPI application ---
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      additional_contexts:
+        pipeline_common: ../pipeline-common
+      args:
+        ENABLE_GPU: ${ENABLE_GPU:-false}
+    ports:
+      - "8000:8000"
+    environment:
+      DOCFOLD_MODE: api
+      DOCFOLD_HOST: "0.0.0.0"
+      DOCFOLD_PORT: "8000"
+      DOCFOLD_WORKERS: "2"
+      DOCFOLD_LOG_LEVEL: info
+      DOCFOLD_REDIS_URL: redis://redis:6379
+      DOCFOLD_UPLOAD_DIR: /data/uploads
+      DOCFOLD_RESULTS_DIR: /data/results
+    volumes:
+      - docfold-uploads:/data/uploads
+      - docfold-results:/data/results
+    depends_on:
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+  # --- Background worker (CPU) ---
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      additional_contexts:
+        pipeline_common: ../pipeline-common
+      args:
+        ENABLE_GPU: ${ENABLE_GPU:-false}
+    environment:
+      DOCFOLD_MODE: worker
+      DOCFOLD_REDIS_URL: redis://redis:6379
+      DOCFOLD_UPLOAD_DIR: /data/uploads
+      DOCFOLD_RESULTS_DIR: /data/results
+    volumes:
+      - docfold-uploads:/data/uploads
+      - docfold-results:/data/results
+    depends_on:
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # --- Redis job queue ---
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+      - ./docker/redis.conf:/usr/local/etc/redis/redis.conf:ro
+    command: redis-server /usr/local/etc/redis/redis.conf
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    restart: unless-stopped
+
+volumes:
+  docfold-uploads:
+  docfold-results:
+  redis-data:

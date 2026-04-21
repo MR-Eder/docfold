@@ -81,13 +81,17 @@ class TestEvaluationRunner:
 
         # Create ground truth
         gt = cat_dir / "inv_001.ground_truth.json"
-        gt.write_text(json.dumps({
-            "document_id": "inv_001",
-            "category": "invoice",
-            "ground_truth": {
-                "full_text": "Hello world extracted text",
-            }
-        }))
+        gt.write_text(
+            json.dumps(
+                {
+                    "document_id": "inv_001",
+                    "category": "invoice",
+                    "ground_truth": {
+                        "full_text": "Hello world extracted text",
+                    },
+                }
+            )
+        )
 
         return tmp_path
 

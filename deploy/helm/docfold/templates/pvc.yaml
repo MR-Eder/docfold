@@ -1,0 +1,35 @@
+{{- if .Values.storage.uploads.enabled }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "docfold.fullname" . }}-uploads
+  labels:
+    {{- include "docfold.labels" . | nindent 4 }}
+spec:
+  accessModes:
+    {{- toYaml .Values.storage.uploads.accessModes | nindent 4 }}
+  {{- if .Values.storage.uploads.storageClassName }}
+  storageClassName: {{ .Values.storage.uploads.storageClassName | quote }}
+  {{- end }}
+  resources:
+    requests:
+      storage: {{ .Values.storage.uploads.size }}
+{{- end }}
+---
+{{- if .Values.storage.results.enabled }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "docfold.fullname" . }}-results
+  labels:
+    {{- include "docfold.labels" . | nindent 4 }}
+spec:
+  accessModes:
+    {{- toYaml .Values.storage.results.accessModes | nindent 4 }}
+  {{- if .Values.storage.results.storageClassName }}
+  storageClassName: {{ .Values.storage.results.storageClassName | quote }}
+  {{- end }}
+  resources:
+    requests:
+      storage: {{ .Values.storage.results.size }}
+{{- end }}

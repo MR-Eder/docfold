@@ -109,7 +109,13 @@ class EngineResult:
     # --- optional enrichments ---
 
     metadata: dict[str, Any] = field(default_factory=dict)
-    """Engine-specific metadata (model versions, config used, etc.)."""
+    """Engine-specific metadata (model versions, config used, etc.).
+
+    When populated with a ``"engine_config"`` key, those values feed
+    into :meth:`docfold_id` so the lineage id is stable per (input,
+    config) pair without including the potentially-nondeterministic
+    output bytes.
+    """
 
     pages: int | None = None
     """Number of pages processed (if applicable)."""
@@ -132,6 +138,46 @@ class EngineResult:
 
     processing_time_ms: int = 0
     """Wall-clock processing time in milliseconds."""
+
+    source_content_hash: str | None = None
+    """SHA-256 hex digest of the source bytes this result was derived from.
+
+    Populated by the API layer after reading the upload — engines
+    themselves don't have to compute it. Required for :meth:`docfold_id`
+    to produce a lineage-compatible id.
+    """
+
+    def docfold_id(self) -> str | None:
+        """Return the content-addressed lineage id for this result.
+
+        Pre-image: ``(source_content_hash, engine_name, engine_config)``.
+        Notably **not** the output bytes — OCR / LLM engines are often
+        non-deterministic at the byte level, but their ``(input,
+        config)`` pair is stable, which is what the lineage graph needs
+        for idempotent edges across re-runs.
+
+        Returns ``None`` when ``source_content_hash`` is missing or when
+        :mod:`pipeline_common` isn't available at runtime (pure-
+        docfold install outside the pipelines stack). In the pipelines
+        deployment the module is always present via the Dockerfile's
+        secondary build context.
+        """
+        if not self.source_content_hash:
+            return None
+        try:
+            from pipeline_common import compute_id, get_tenant_id
+        except ImportError:
+            return None
+        engine_config = self.metadata.get("engine_config", {})
+        if not isinstance(engine_config, dict):
+            engine_config = {}
+        return str(
+            compute_id(
+                type="docfold",
+                tenant=get_tenant_id(),
+                parts=[self.source_content_hash, self.engine_name, engine_config],
+            )
+        )
 
 
 class DocumentEngine(ABC):

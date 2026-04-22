@@ -8,6 +8,8 @@ import uuid
 from datetime import datetime, timezone
 from typing import Any
 
+from pipeline_common.tenant_context import get_tenant_id
+
 from docfold.api.schemas.jobs import JobResponse, JobResultResponse, JobStatus
 
 logger = logging.getLogger(__name__)
@@ -61,11 +63,19 @@ class JobQueue:
         job_id = str(uuid.uuid4())
         now = datetime.now(timezone.utc)
 
+        # Snapshot the tenant from the ContextVar at enqueue time so the
+        # worker can rebind it at the start of every job. Without this,
+        # the worker would process every job under DEFAULT_TENANT and
+        # Redis keys / voyager collections / metrics would all attribute
+        # cross-tenant work to "default" — the failure mode the audit
+        # flagged as C3.
+        enriched_params = {"tenant_id": get_tenant_id(), **(params or {})}
+
         job_data = {
             "job_id": job_id,
             "status": JobStatus.PENDING.value,
             "task_type": task_type,
-            "params": json.dumps(params or {}),
+            "params": json.dumps(enriched_params),
             "created_at": now.isoformat(),
             "updated_at": now.isoformat(),
             "engine_name": None,

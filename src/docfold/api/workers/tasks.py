@@ -13,10 +13,21 @@ import os
 from typing import Any
 
 from arq.connections import RedisSettings
+from pipeline_common.tenant_context import DEFAULT_TENANT, scoped_tenant
 
 from docfold.api.schemas.jobs import JobStatus
 
 logger = logging.getLogger(__name__)
+
+
+def _job_tenant(params: dict[str, Any]) -> str:
+    """Return the tenant id from job params, defaulting safely.
+
+    Legacy jobs written before the multi-tenancy rollout have no
+    ``tenant_id`` — those map to :data:`DEFAULT_TENANT` so the work
+    still runs but lands in the migrated ``t:default:*`` namespace.
+    """
+    return params.get("tenant_id") or DEFAULT_TENANT
 
 
 async def process_document_task(ctx: dict, job_id: str, params: dict[str, Any]) -> None:
@@ -26,178 +37,181 @@ async def process_document_task(ctx: dict, job_id: str, params: dict[str, Any]) 
     """
     queue = ctx["queue"]
 
-    try:
-        await queue.update_job(job_id, status=JobStatus.PROCESSING)
+    with scoped_tenant(_job_tenant(params)):
+        try:
+            await queue.update_job(job_id, status=JobStatus.PROCESSING)
 
-        router = ctx["router"]
-        file_path = params["file_path"]
-        engine = params.get("engine")
-        output_format = params.get("output_format", "markdown")
+            router = ctx["router"]
+            file_path = params["file_path"]
+            engine = params.get("engine")
+            output_format = params.get("output_format", "markdown")
 
-        from docfold.api.services.processor import ProcessorService
+            from docfold.api.services.processor import ProcessorService
 
-        processor = ProcessorService(router=router)
-        result = await processor.process_document(
-            file_path=file_path,
-            output_format=output_format,
-            engine_hint=engine,
-        )
+            processor = ProcessorService(router=router)
+            result = await processor.process_document(
+                file_path=file_path,
+                output_format=output_format,
+                engine_hint=engine,
+            )
 
-        await queue.update_job(
-            job_id,
-            status=JobStatus.COMPLETED,
-            engine_name=result.get("engine_name"),
-            progress=1.0,
-        )
-        await queue.store_result(
-            job_id,
-            {
-                "status": JobStatus.COMPLETED.value,
-                **result,
-            },
-        )
+            await queue.update_job(
+                job_id,
+                status=JobStatus.COMPLETED,
+                engine_name=result.get("engine_name"),
+                progress=1.0,
+            )
+            await queue.store_result(
+                job_id,
+                {
+                    "status": JobStatus.COMPLETED.value,
+                    **result,
+                },
+            )
 
-    except Exception as exc:
-        logger.exception("Job %s failed: %s", job_id, exc)
-        await queue.update_job(
-            job_id,
-            status=JobStatus.FAILED,
-            error=str(exc),
-        )
-        await queue.store_result(
-            job_id,
-            {
-                "status": JobStatus.FAILED.value,
-                "error": str(exc),
-            },
-        )
-    finally:
-        # Clean up uploaded file
-        file_path = params.get("file_path")
-        if file_path:
-            try:
-                os.remove(file_path)
-            except OSError:
-                pass
+        except Exception as exc:
+            logger.exception("Job %s failed: %s", job_id, exc)
+            await queue.update_job(
+                job_id,
+                status=JobStatus.FAILED,
+                error=str(exc),
+            )
+            await queue.store_result(
+                job_id,
+                {
+                    "status": JobStatus.FAILED.value,
+                    "error": str(exc),
+                },
+            )
+        finally:
+            # Clean up uploaded file
+            file_path = params.get("file_path")
+            if file_path:
+                try:
+                    os.remove(file_path)
+                except OSError:
+                    pass
 
 
 async def process_batch_task(ctx: dict, job_id: str, params: dict[str, Any]) -> None:
     """Process a batch of documents."""
     queue = ctx["queue"]
 
-    try:
-        await queue.update_job(job_id, status=JobStatus.PROCESSING)
+    with scoped_tenant(_job_tenant(params)):
+        try:
+            await queue.update_job(job_id, status=JobStatus.PROCESSING)
 
-        router = ctx["router"]
-        file_paths = params["file_paths"]
-        engine = params.get("engine")
-        output_format = params.get("output_format", "markdown")
+            router = ctx["router"]
+            file_paths = params["file_paths"]
+            engine = params.get("engine")
+            output_format = params.get("output_format", "markdown")
 
-        from docfold.engines.base import OutputFormat
+            from docfold.engines.base import OutputFormat
 
-        fmt = OutputFormat(output_format)
-        batch_result = await router.process_batch(
-            file_paths,
-            output_format=fmt,
-            engine_hint=engine,
-        )
+            fmt = OutputFormat(output_format)
+            batch_result = await router.process_batch(
+                file_paths,
+                output_format=fmt,
+                engine_hint=engine,
+            )
 
-        await queue.update_job(
-            job_id,
-            status=JobStatus.COMPLETED,
-            progress=1.0,
-        )
+            await queue.update_job(
+                job_id,
+                status=JobStatus.COMPLETED,
+                progress=1.0,
+            )
 
-        results_data = {
-            fp: {
-                "content": res.content,
-                "format": res.format.value,
-                "engine_name": res.engine_name,
-                "pages": res.pages,
-                "processing_time_ms": res.processing_time_ms,
+            results_data = {
+                fp: {
+                    "content": res.content,
+                    "format": res.format.value,
+                    "engine_name": res.engine_name,
+                    "pages": res.pages,
+                    "processing_time_ms": res.processing_time_ms,
+                }
+                for fp, res in batch_result.results.items()
             }
-            for fp, res in batch_result.results.items()
-        }
 
-        await queue.store_result(
-            job_id,
-            {
-                "status": JobStatus.COMPLETED.value,
-                "results": results_data,
-                "errors": batch_result.errors,
-                "total": batch_result.total,
-                "succeeded": batch_result.succeeded,
-                "failed": batch_result.failed,
-                "total_time_ms": batch_result.total_time_ms,
-            },
-        )
+            await queue.store_result(
+                job_id,
+                {
+                    "status": JobStatus.COMPLETED.value,
+                    "results": results_data,
+                    "errors": batch_result.errors,
+                    "total": batch_result.total,
+                    "succeeded": batch_result.succeeded,
+                    "failed": batch_result.failed,
+                    "total_time_ms": batch_result.total_time_ms,
+                },
+            )
 
-    except Exception as exc:
-        logger.exception("Batch job %s failed: %s", job_id, exc)
-        await queue.update_job(job_id, status=JobStatus.FAILED, error=str(exc))
-        await queue.store_result(
-            job_id,
-            {
-                "status": JobStatus.FAILED.value,
-                "error": str(exc),
-            },
-        )
-    finally:
-        for fp in params.get("file_paths", []):
-            try:
-                os.remove(fp)
-            except OSError:
-                pass
+        except Exception as exc:
+            logger.exception("Batch job %s failed: %s", job_id, exc)
+            await queue.update_job(job_id, status=JobStatus.FAILED, error=str(exc))
+            await queue.store_result(
+                job_id,
+                {
+                    "status": JobStatus.FAILED.value,
+                    "error": str(exc),
+                },
+            )
+        finally:
+            for fp in params.get("file_paths", []):
+                try:
+                    os.remove(fp)
+                except OSError:
+                    pass
 
 
 async def compare_engines_task(ctx: dict, job_id: str, params: dict[str, Any]) -> None:
     """Compare engines on a single document."""
     queue = ctx["queue"]
 
-    try:
-        await queue.update_job(job_id, status=JobStatus.PROCESSING)
+    with scoped_tenant(_job_tenant(params)):
+        try:
+            await queue.update_job(job_id, status=JobStatus.PROCESSING)
 
-        router = ctx["router"]
-        file_path = params["file_path"]
-        engines = params.get("engines")
-        output_format = params.get("output_format", "markdown")
+            router = ctx["router"]
+            file_path = params["file_path"]
+            engines = params.get("engines")
+            output_format = params.get("output_format", "markdown")
 
-        from docfold.api.services.processor import ProcessorService
+            from docfold.api.services.processor import ProcessorService
 
-        processor = ProcessorService(router=router)
-        results = await processor.compare_engines(
-            file_path=file_path,
-            output_format=output_format,
-            engines=engines,
-        )
+            processor = ProcessorService(router=router)
+            results = await processor.compare_engines(
+                file_path=file_path,
+                output_format=output_format,
+                engines=engines,
+            )
 
-        await queue.update_job(job_id, status=JobStatus.COMPLETED, progress=1.0)
-        await queue.store_result(
-            job_id,
-            {
-                "status": JobStatus.COMPLETED.value,
-                "results": results,
-                "engines_compared": len(results),
-            },
-        )
+            await queue.update_job(job_id, status=JobStatus.COMPLETED, progress=1.0)
+            await queue.store_result(
+                job_id,
+                {
+                    "status": JobStatus.COMPLETED.value,
+                    "results": results,
+                    "engines_compared": len(results),
+                },
+            )
 
-    except Exception as exc:
-        logger.exception("Compare job %s failed: %s", job_id, exc)
-        await queue.update_job(job_id, status=JobStatus.FAILED, error=str(exc))
-        await queue.store_result(
-            job_id,
-            {
-                "status": JobStatus.FAILED.value,
-                "error": str(exc),
-            },
-        )
-    finally:
-        file_path = params.get("file_path")
-        if file_path:
-            try:
-                os.remove(file_path)
-            except OSError:
-                pass
+        except Exception as exc:
+            logger.exception("Compare job %s failed: %s", job_id, exc)
+            await queue.update_job(job_id, status=JobStatus.FAILED, error=str(exc))
+            await queue.store_result(
+                job_id,
+                {
+                    "status": JobStatus.FAILED.value,
+                    "error": str(exc),
+                },
+            )
+        finally:
+            file_path = params.get("file_path")
+            if file_path:
+                try:
+                    os.remove(file_path)
+                except OSError:
+                    pass
 
 
 # ------------------------------------------------------------------

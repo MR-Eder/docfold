@@ -49,6 +49,82 @@ class TestEngineResult:
         assert result.confidence == 0.95
         assert "img1.png" in result.images
 
+    def test_docfold_id_is_stable_for_identical_input_and_config(self):
+        """Lineage graph relies on ``docfold_id`` being a
+        deterministic content-addressed id — re-running the same engine
+        with the same config on the same source must produce the same
+        id so parent→child edges are idempotent across re-runs."""
+        a = EngineResult(
+            content="...output bytes may vary between OCR runs...",
+            format=OutputFormat.MARKDOWN,
+            engine_name="mistral_ocr",
+            metadata={"engine_config": {"temperature": 0.0, "model": "mistral-ocr-latest"}},
+            source_content_hash="abc123",
+        )
+        b = EngineResult(
+            content="...slightly different output bytes...",
+            format=OutputFormat.MARKDOWN,
+            engine_name="mistral_ocr",
+            metadata={"engine_config": {"temperature": 0.0, "model": "mistral-ocr-latest"}},
+            source_content_hash="abc123",
+        )
+        # Same (source_hash, engine, config) → same id, even though the
+        # output bytes differ (deliberately: OCR / LLM engines are
+        # non-deterministic at the byte level but stable at the
+        # (input, config) level).
+        assert a.docfold_id() == b.docfold_id()
+        assert a.docfold_id().startswith("CAS_v1:docfold:")
+
+    def test_docfold_id_differs_for_different_engine_or_config(self):
+        """Two runs against the same source but with different engines
+        (or different configs) must produce distinct ids — otherwise
+        swapping engines would silently de-duplicate to the wrong row."""
+        base_kwargs = {
+            "content": "x",
+            "format": OutputFormat.MARKDOWN,
+            "source_content_hash": "abc",
+        }
+        a = EngineResult(
+            engine_name="mistral_ocr", metadata={"engine_config": {"k": 1}}, **base_kwargs
+        )
+        b = EngineResult(engine_name="docling", metadata={"engine_config": {"k": 1}}, **base_kwargs)
+        c = EngineResult(
+            engine_name="mistral_ocr", metadata={"engine_config": {"k": 2}}, **base_kwargs
+        )
+        assert a.docfold_id() != b.docfold_id()  # different engine
+        assert a.docfold_id() != c.docfold_id()  # different config
+
+    def test_docfold_id_requires_source_content_hash(self):
+        """Without an upstream hash, the lineage id has no root — callers
+        must provide it (scraping sets ``source_id``, the chunking
+        service computes ``source_content_hash``). ``None`` should
+        produce ``None``, not crash, so legacy callers keep working."""
+        result = EngineResult(
+            content="x",
+            format=OutputFormat.MARKDOWN,
+            engine_name="test",
+            source_content_hash=None,
+        )
+        assert result.docfold_id() is None
+
+    def test_docfold_id_tenant_aware(self):
+        """Tenant is in the id pre-image (ADR 0001 security boundary).
+        Same content under two tenants must yield distinct ids."""
+        from pipeline_common.tenant_context import scoped_tenant
+
+        kwargs = dict(
+            content="x",
+            format=OutputFormat.MARKDOWN,
+            engine_name="t",
+            source_content_hash="abc",
+            metadata={"engine_config": {}},
+        )
+        with scoped_tenant("acme"):
+            id_acme = EngineResult(**kwargs).docfold_id()
+        with scoped_tenant("umbrella"):
+            id_umb = EngineResult(**kwargs).docfold_id()
+        assert id_acme != id_umb
+
 
 class TestDocumentEngineInterface:
     def test_cannot_instantiate_abstract(self):
